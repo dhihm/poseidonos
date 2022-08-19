@@ -29,7 +29,112 @@ using ::testing::ReturnRef;
 
 namespace pos
 {
-TEST(BlockManager, Init_TestSimpleFunc)
+class BlockManagerTestFixture : public testing::Test
+{
+public:
+    BlockManagerTestFixture(void) {};
+    virtual ~BlockManagerTestFixture(void) {};
+
+    virtual void SetUp(void);
+    virtual void TearDown(void);
+
+    virtual void CleanUp(void);
+
+protected:
+    AllocatorAddressInfo* CreateAllocatorAddressInfo(int stripesPerSegment, int blksPerStripe);
+    BlockManager* CreateBlockManager(AllocatorAddressInfo* addrInfo);
+
+    BlockManager* blkManager;
+    AllocatorAddressInfo* addrInfo;
+    NiceMock<MockIWBStripeAllocator>* iWbstripe;
+    NiceMock<MockAllocatorCtx>* allocCtx;
+    NiceMock<MockBlockAllocationStatus> blockAllocationStatus;
+    NiceMock<MockSegmentCtx>* segCtx;
+    NiceMock<MockGcCtx>* gcCtx;
+    NiceMock<MockContextManager>* ctxManager;
+    NiceMock<MockTelemetryPublisher>* tp;
+};
+
+void
+BlockManagerTestFixture::SetUp(void)
+{
+}
+
+void
+BlockManagerTestFixture::TearDown(void)
+{
+    CleanUp();
+}
+
+BlockManager*
+BlockManagerTestFixture::CreateBlockManager(AllocatorAddressInfo* addrInfo)
+{
+    iWbstripe = new NiceMock<MockIWBStripeAllocator>();
+    allocCtx = new NiceMock<MockAllocatorCtx>();
+    segCtx = new NiceMock<MockSegmentCtx>();
+    gcCtx = new NiceMock<MockGcCtx>();
+    ctxManager = new NiceMock<MockContextManager>();
+    tp = new NiceMock<MockTelemetryPublisher>();
+
+    BlockManager* blkManager = new BlockManager(tp, nullptr, nullptr,
+        allocCtx, &blockAllocationStatus, addrInfo, ctxManager, 0);
+
+    EXPECT_CALL(*ctxManager, GetSegmentCtx).WillRepeatedly(Return(segCtx));
+    EXPECT_CALL(*ctxManager, GetGcCtx).WillRepeatedly(Return(gcCtx));
+
+    return blkManager;
+}
+
+AllocatorAddressInfo*
+BlockManagerTestFixture::CreateAllocatorAddressInfo(int stripesPerSegment, int blksPerStripe)
+{
+    addrInfo = new AllocatorAddressInfo();
+    addrInfo->SetstripesPerSegment(stripesPerSegment);
+    addrInfo->SetblksPerSegment(blksPerStripe);
+
+    return addrInfo;
+}
+
+void
+BlockManagerTestFixture::CleanUp(void)
+{
+    if (nullptr != addrInfo)
+    {
+        delete addrInfo;
+    }
+
+    if (nullptr != iWbstripe)
+    {
+        delete iWbstripe;
+    }
+
+    if (nullptr != allocCtx)
+    {
+        delete allocCtx;
+    }
+
+    if (nullptr != segCtx)
+    {
+        delete segCtx;
+    }
+
+    if (nullptr != gcCtx)
+    {
+        delete gcCtx;
+    }
+
+    if (nullptr != ctxManager)
+    {
+        delete ctxManager;
+    }
+
+    if (nullptr != tp)
+    {
+        delete tp;
+    }
+}
+
+TEST(BlockManagerTestFixture, Init_TestSimpleFunc)
 {
     // given
     NiceMock<MockIWBStripeAllocator>* iWbstripe = new NiceMock<MockIWBStripeAllocator>();
@@ -39,21 +144,17 @@ TEST(BlockManager, Init_TestSimpleFunc)
     delete iWbstripe;
 }
 
-TEST(BlockManager, AllocateWriteBufferBlks_TestFunc)
+TEST_F(BlockManagerTestFixture, AllocateWriteBufferBlks_TestFunc)
 {
     // given
-    AllocatorAddressInfo addrInfo;
-    addrInfo.SetstripesPerSegment(10);
-    addrInfo.SetblksPerStripe(5);
-    NiceMock<MockIWBStripeAllocator>* iWbstripe = new NiceMock<MockIWBStripeAllocator>();
-    NiceMock<MockAllocatorCtx>* allocCtx = new NiceMock<MockAllocatorCtx>();
-    NiceMock<MockBlockAllocationStatus> blockAllocationStatus;
-    NiceMock<MockSegmentCtx>* segCtx = new NiceMock<MockSegmentCtx>();
-    NiceMock<MockGcCtx>* gcCtx = new NiceMock<MockGcCtx>();
-    NiceMock<MockContextManager>* ctxManager = new NiceMock<MockContextManager>();
-    NiceMock<MockTelemetryPublisher>* tp = new NiceMock<MockTelemetryPublisher>();
-    BlockManager blkManager(tp, nullptr, nullptr, allocCtx, &blockAllocationStatus, &addrInfo, ctxManager, 0);
-    blkManager.Init(iWbstripe);
+    const int STRIPES_PER_SEGMENT = 10;
+    const int BLKS_PER_STRIPE = 5;
+
+    addrInfo = CreateAllocatorAddressInfo(STRIPES_PER_SEGMENT, BLKS_PER_STRIPE);
+    blkManager = CreateBlockManager(addrInfo);
+
+    blkManager->Init(iWbstripe);
+
     std::mutex wbCtxLock;
     EXPECT_CALL(*allocCtx, GetActiveStripeTailLock).WillRepeatedly(ReturnRef(wbCtxLock));
 
@@ -67,34 +168,25 @@ TEST(BlockManager, AllocateWriteBufferBlks_TestFunc)
     EXPECT_CALL(blockAllocationStatus, IsUserBlockAllocationProhibited)
         .WillOnce(Return(false)).WillOnce(Return(true)).WillOnce(Return(true));
 
-    EXPECT_CALL(*ctxManager, GetSegmentCtx).WillRepeatedly(Return(segCtx));
-    EXPECT_CALL(*ctxManager, GetGcCtx).WillRepeatedly(Return(gcCtx));
-
     // when 1.
-    auto ret = blkManager.AllocateWriteBufferBlks(0, 1);
+    auto ret = blkManager->AllocateWriteBufferBlks(0, 1);
     // then 1.
     EXPECT_EQ(1, ret.first.numBlks);
     // given 2.
-    blkManager.ProhibitUserBlkAlloc();
+    blkManager->ProhibitUserBlkAlloc();
     // when 2.
-    ret = blkManager.AllocateWriteBufferBlks(0, 1);
+    ret = blkManager->AllocateWriteBufferBlks(0, 1);
     // then 2.
     EXPECT_EQ(UNMAP_VSA, ret.first.startVsa);
     // given 3.
-    blkManager.BlockAllocating(0);
+    blkManager->BlockAllocating(0);
     // when 3.
-    ret = blkManager.AllocateWriteBufferBlks(0, 1);
+    ret = blkManager->AllocateWriteBufferBlks(0, 1);
     // then 3.
     EXPECT_EQ(UNMAP_VSA, ret.first.startVsa);
-    delete iWbstripe;
-    delete allocCtx;
-    delete segCtx;
-    delete gcCtx;
-    delete ctxManager;
-    delete tp;
 }
 
-TEST(BlockManager, AllocateGcDestStripe_testIfReturnsStripeWhenSuccessToAllocateUserLsid)
+TEST(BlockManagerTestFixture, AllocateGcDestStripe_testIfReturnsStripeWhenSuccessToAllocateUserLsid)
 {
     // given
     AllocatorAddressInfo addrInfo;
@@ -134,7 +226,7 @@ TEST(BlockManager, AllocateGcDestStripe_testIfReturnsStripeWhenSuccessToAllocate
     delete reverseMap;
 }
 
-TEST(BlockManager, AllocateGcDestStripe_testIfReturnsStripeWhenSuccessToAllocateNewSegmentAndUserLsid)
+TEST(BlockManagerTestFixture, AllocateGcDestStripe_testIfReturnsStripeWhenSuccessToAllocateNewSegmentAndUserLsid)
 {
     // given
     AllocatorAddressInfo addrInfo;
@@ -179,7 +271,7 @@ TEST(BlockManager, AllocateGcDestStripe_testIfReturnsStripeWhenSuccessToAllocate
     delete revMapPack;
 }
 
-TEST(BlockManager, AllocateGcDestStripe_testIfReturnsNullIRightAwayInsteadOfBlockingForeverWhenFreeSegmentIsNotAvailable)
+TEST(BlockManagerTestFixture, AllocateGcDestStripe_testIfReturnsNullIRightAwayInsteadOfBlockingForeverWhenFreeSegmentIsNotAvailable)
 {
     // given
     AllocatorAddressInfo addrInfo;
@@ -220,7 +312,7 @@ TEST(BlockManager, AllocateGcDestStripe_testIfReturnsNullIRightAwayInsteadOfBloc
     delete reverseMap;
 }
 
-TEST(BlockManager, AllocateGcDestStripe_testIfReturnsNullWhenBlockAllocationIsProhibited)
+TEST(BlockManagerTestFixture, AllocateGcDestStripe_testIfReturnsNullWhenBlockAllocationIsProhibited)
 {
     // given
     AllocatorAddressInfo addrInfo;
@@ -254,7 +346,7 @@ TEST(BlockManager, AllocateGcDestStripe_testIfReturnsNullWhenBlockAllocationIsPr
     delete reverseMap;
 }
 
-TEST(BlockManager, ProhibitUserBlkAlloc_TestSimpleSetter)
+TEST(BlockManagerTestFixture, ProhibitUserBlkAlloc_TestSimpleSetter)
 {
     // given
     NiceMock<MockBlockAllocationStatus> blockAllocationStatus;
@@ -268,7 +360,7 @@ TEST(BlockManager, ProhibitUserBlkAlloc_TestSimpleSetter)
     delete tp;
 }
 
-TEST(BlockManager, PermitUserBlkAlloc_TestSimpleSetter)
+TEST(BlockManagerTestFixture, PermitUserBlkAlloc_TestSimpleSetter)
 {
     // given
     NiceMock<MockBlockAllocationStatus> blockAllocationStatus;
@@ -281,7 +373,7 @@ TEST(BlockManager, PermitUserBlkAlloc_TestSimpleSetter)
     delete tp;
 }
 
-TEST(BlockManager, BlockAllocating_TestSimpleSetter)
+TEST(BlockManagerTestFixture, BlockAllocating_TestSimpleSetter)
 {
     // given
     NiceMock<MockBlockAllocationStatus> blockAllocationStatus;
@@ -294,7 +386,7 @@ TEST(BlockManager, BlockAllocating_TestSimpleSetter)
     EXPECT_EQ(actual, true);
 }
 
-TEST(BlockManager, UnblockAllocating_TestSimpleSetter)
+TEST(BlockManagerTestFixture, UnblockAllocating_TestSimpleSetter)
 {
     // given
     NiceMock<MockBlockAllocationStatus> blockAllocationStatus;
@@ -306,7 +398,7 @@ TEST(BlockManager, UnblockAllocating_TestSimpleSetter)
     blkManager.UnblockAllocating(volumeId);
 }
 
-TEST(BlockManager, TurnOffBlkAllocation_TestSimpleSetter)
+TEST(BlockManagerTestFixture, TurnOffBlkAllocation_TestSimpleSetter)
 {
     // given
     NiceMock<MockBlockAllocationStatus> blockAllocationStatus;
@@ -318,7 +410,7 @@ TEST(BlockManager, TurnOffBlkAllocation_TestSimpleSetter)
     blkManager.TurnOffBlkAllocation();
 }
 
-TEST(BlockManager, TurnOnBlkAllocation_TestSimpleSetter)
+TEST(BlockManagerTestFixture, TurnOnBlkAllocation_TestSimpleSetter)
 {
     // given
     NiceMock<MockBlockAllocationStatus> blockAllocationStatus;
@@ -329,7 +421,7 @@ TEST(BlockManager, TurnOnBlkAllocation_TestSimpleSetter)
     blkManager.TurnOnBlkAllocation();
 }
 
-TEST(BlockManager, _AllocateBlks_testIfReturnsUnmapVsaWhenFailedToAllocateWbStripeId)
+TEST(BlockManagerTestFixture, _AllocateBlks_testIfReturnsUnmapVsaWhenFailedToAllocateWbStripeId)
 {
     // given
     AllocatorAddressInfo addrInfo;
@@ -374,7 +466,7 @@ TEST(BlockManager, _AllocateBlks_testIfReturnsUnmapVsaWhenFailedToAllocateWbStri
     delete iStripeMap;
 }
 
-TEST(BlockManager, _AllocateBlks_testIfReturnsUnmapVsaWhenUserBlockAllocationIsProhibited)
+TEST(BlockManagerTestFixture, _AllocateBlks_testIfReturnsUnmapVsaWhenUserBlockAllocationIsProhibited)
 {
     // given
     AllocatorAddressInfo addrInfo;
@@ -427,7 +519,7 @@ TEST(BlockManager, _AllocateBlks_testIfReturnsUnmapVsaWhenUserBlockAllocationIsP
     delete iStripeMap;
 }
 
-TEST(BlockManager, _AllocateBlks_testIfReturnsUnmapVsaWhenFailedToAllocateFreeSegment)
+TEST(BlockManagerTestFixture, _AllocateBlks_testIfReturnsUnmapVsaWhenFailedToAllocateFreeSegment)
 {
     // given
     NiceMock<MockAllocatorAddressInfo>* addrInfo = new NiceMock<MockAllocatorAddressInfo>();
@@ -482,7 +574,7 @@ TEST(BlockManager, _AllocateBlks_testIfReturnsUnmapVsaWhenFailedToAllocateFreeSe
     delete addrInfo;
 }
 
-TEST(BlockManager, _AllocateBlks_testIfReturnsAllocatedVsaAndUserStripeId)
+TEST(BlockManagerTestFixture, _AllocateBlks_testIfReturnsAllocatedVsaAndUserStripeId)
 {
     // given
     AllocatorAddressInfo addrInfo;
@@ -560,7 +652,7 @@ TEST(BlockManager, _AllocateBlks_testIfReturnsAllocatedVsaAndUserStripeId)
     delete stripe;
 }
 
-TEST(BlockManager, _AllocateBlks_testWhenAllocatingBlocksFromActiveStripe)
+TEST(BlockManagerTestFixture, _AllocateBlks_testWhenAllocatingBlocksFromActiveStripe)
 {
     // given
     AllocatorAddressInfo addrInfo;
@@ -620,7 +712,7 @@ TEST(BlockManager, _AllocateBlks_testWhenAllocatingBlocksFromActiveStripe)
     delete stripe;
 }
 
-TEST(BlockManager, _AllocateBlks_testWhenAllocatingBlocksFromWbStripe)
+TEST(BlockManagerTestFixture, _AllocateBlks_testWhenAllocatingBlocksFromWbStripe)
 {
     // given
     AllocatorAddressInfo addrInfo;
@@ -699,7 +791,7 @@ TEST(BlockManager, _AllocateBlks_testWhenAllocatingBlocksFromWbStripe)
     delete stripe;
 }
 
-TEST(BlockManager, _AllocateBlks_testIfReturnsAllocatedVsaAndUnmapStripeIdWhenNewStripeIsNotAllocated)
+TEST(BlockManagerTestFixture, _AllocateBlks_testIfReturnsAllocatedVsaAndUnmapStripeIdWhenNewStripeIsNotAllocated)
 {
     // given
     AllocatorAddressInfo addrInfo;
@@ -749,7 +841,7 @@ TEST(BlockManager, _AllocateBlks_testIfReturnsAllocatedVsaAndUnmapStripeIdWhenNe
     delete iStripeMap;
 }
 
-TEST(BlockManager, _AllocateBlks_testIfReturnsOnlyAllocatedBlockNumbaerWhenRequestedSizeIsLargerThanTheStripe)
+TEST(BlockManagerTestFixture, _AllocateBlks_testIfReturnsOnlyAllocatedBlockNumbaerWhenRequestedSizeIsLargerThanTheStripe)
 {
     // given
     AllocatorAddressInfo addrInfo;
