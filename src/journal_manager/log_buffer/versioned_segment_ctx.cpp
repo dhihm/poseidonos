@@ -63,6 +63,7 @@ VersionedSegmentCtx::Init(JournalConfiguration* journalConfiguration, SegmentInf
     for (int index = 0; index < config->GetNumLogGroups(); index++)
     {
         std::shared_ptr<VersionedSegmentInfo> segmentInfo(new VersionedSegmentInfo());
+        segmentInfo->Init(numSegments);
         segmentInfoDiffs.push_back(segmentInfo);
     }
 
@@ -187,7 +188,7 @@ VersionedSegmentCtx::ResetFlushedInfo(int logGroupId)
 {
     _CheckLogGroupIdValidity(logGroupId);
 
-    segmentInfoDiffs[logGroupId]->Reset();
+    segmentInfoDiffs[logGroupId]->Init(numSegments);
 
     segmentInfosInFlush = INVALID_SEGMENT_CONTEXT;
 

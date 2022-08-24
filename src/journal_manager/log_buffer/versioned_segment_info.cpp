@@ -54,6 +54,16 @@ VersionedSegmentInfo::Reset(void)
 }
 
 void
+VersionedSegmentInfo::Init(int numSegment)
+{
+    for (int segId = 0; segId < numSegment; segId++)
+    {
+        changedValidBlockCount[segId] = 0;
+        changedOccupiedStripeCount[segId] = 0;
+    }
+}
+
+void
 VersionedSegmentInfo::IncreaseValidBlockCount(SegmentId segId, uint32_t cnt)
 {
     changedValidBlockCount[segId] += cnt;

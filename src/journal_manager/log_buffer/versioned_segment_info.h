@@ -46,6 +46,7 @@ public:
     virtual ~VersionedSegmentInfo(void);
 
     virtual void Reset(void);
+    virtual void Init(int numSegments);
     virtual void IncreaseValidBlockCount(SegmentId segId, uint32_t cnt);
     virtual void DecreaseValidBlockCount(SegmentId segId, uint32_t cnt);
     virtual void IncreaseOccupiedStripeCount(SegmentId segId);
