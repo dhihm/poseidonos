@@ -38,48 +38,65 @@ namespace pos
 {
 VersionedSegmentInfo::VersionedSegmentInfo(void)
 {
+    pthread_rwlock_init(&lock, nullptr);
 }
 
 VersionedSegmentInfo::~VersionedSegmentInfo(void)
 {
     changedValidBlockCount.clear();
     changedOccupiedStripeCount.clear();
+
+    pthread_rwlock_destroy(&lock);
 }
 
 void
 VersionedSegmentInfo::Reset(void)
 {
+    pthread_rwlock_wrlock(&lock);
     changedOccupiedStripeCount.clear();
     changedValidBlockCount.clear();
+    pthread_rwlock_unlock(&lock);
 }
 
 void
 VersionedSegmentInfo::IncreaseValidBlockCount(SegmentId segId, uint32_t cnt)
 {
+    pthread_rwlock_wrlock(&lock);
     changedValidBlockCount[segId] += cnt;
+    pthread_rwlock_unlock(&lock);
 }
 
 void
 VersionedSegmentInfo::DecreaseValidBlockCount(SegmentId segId, uint32_t cnt)
 {
+    pthread_rwlock_wrlock(&lock);
     changedValidBlockCount[segId] -= cnt;
+    pthread_rwlock_unlock(&lock);
 }
 
 void
 VersionedSegmentInfo::IncreaseOccupiedStripeCount(SegmentId segId)
 {
+    pthread_rwlock_wrlock(&lock);
     changedOccupiedStripeCount[segId]++;
+    pthread_rwlock_unlock(&lock);
 }
 
 std::unordered_map<SegmentId, int>
 VersionedSegmentInfo::GetChangedValidBlockCount(void)
 {
-    return this->changedValidBlockCount;
+    pthread_rwlock_rdlock(&lock);
+    auto var = this->changedValidBlockCount;
+    pthread_rwlock_unlock(&lock);
+    return var;
 }
 
 std::unordered_map<SegmentId, uint32_t>
 VersionedSegmentInfo::GetChangedOccupiedStripeCount(void)
 {
+    pthread_rwlock_rdlock(&lock);
+    auto var = this->changedOccupiedStripeCount;
+    pthread_rwlock_unlock(&lock);
     return this->changedOccupiedStripeCount;
 }
 } // namespace pos
