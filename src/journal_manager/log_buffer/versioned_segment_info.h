@@ -56,6 +56,7 @@ public:
 private:
     std::unordered_map<SegmentId, int> changedValidBlockCount;
     std::unordered_map<SegmentId, uint32_t> changedOccupiedStripeCount;
+    pthread_rwlock_t lock;
 };
 
 } // namespace pos
