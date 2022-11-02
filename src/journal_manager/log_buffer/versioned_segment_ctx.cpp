@@ -289,4 +289,5 @@ VersionedSegmentCtx::ResetOccupiedStripeCount(int logGroupId, SegmentId segId)
     segmentInfoDiffs[logGroupId]->ResetOccupiedStripeCount(segId);
 
 }
+
 } // namespace pos
