@@ -35,6 +35,9 @@
 
 #include "mk/ibof_config.h"
 #include "src/debug/debug_info_updater.h"
+#include "src/allocator/include/allocator_const.h"
+#include "src/gc/copier.h"
+#include "src/debug/gc_debug_info.h"
 
 namespace pos
 {
@@ -88,8 +91,13 @@ public:
     ~DebugInfo(void) override;
 
     void Update(void) override;
+    void CreateSubDebugInfoModules(void);
+
+    GcDebugInfo* GetGcDebugInfo(void) { return gcDebugInfo; }
 
 private:
+    void _DeleteSubDebugInfoModules(void);
+    
     AffinityManager* affinityManager;
     AllocatorService* allocatorService;
     ArrayManager* arrayManager;
@@ -127,6 +135,8 @@ private:
 #endif
     ResourceChecker* resourceChecker;
     IoTimeoutChecker* ioTimeoutChecker;
+
+    GcDebugInfo* gcDebugInfo;
 };
 
 } // namespace pos

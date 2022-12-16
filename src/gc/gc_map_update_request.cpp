@@ -54,6 +54,7 @@
 #include "src/mapper/mapper.h"
 #include "src/mapper_service/mapper_service.h"
 #include "src/meta_service/meta_service.h"
+#include "src/debug/debug_info.h"
 
 namespace pos
 {
@@ -99,6 +100,11 @@ GcMapUpdateRequest::Execute(void)
 
     result = _UpdateMeta();
 
+    if (nullptr != debugInfo)
+    {
+        debugInfo->GetGcDebugInfo()->UpdateGcMapUpdateRequest(stripe->GetUserLsid(), this);
+    }
+    
     return result;
 }
 

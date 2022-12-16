@@ -41,10 +41,13 @@ class ReverseMapLoadCompletion : public Callback
 {
 public:
     ReverseMapLoadCompletion(void);
+    ReverseMapLoadCompletion(int lsid_);
     virtual ~ReverseMapLoadCompletion(void) override;
 
 private:
     bool _DoSpecificJob(void) override;
+
+    int lsid;
 };
 
 } // namespace pos

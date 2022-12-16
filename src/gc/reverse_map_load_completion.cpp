@@ -33,12 +33,24 @@
 #include "src/gc/reverse_map_load_completion.h"
 
 #include <air/Air.h>
+#include "src/debug/debug_info.h"
 
 namespace pos
 {
 ReverseMapLoadCompletion::ReverseMapLoadCompletion(void)
-: Callback(false, CallbackType_ReverseMapLoadCompletion)
+: Callback(false, CallbackType_ReverseMapLoadCompletion),
+  lsid(UINT32_MAX)
 {
+}
+
+ReverseMapLoadCompletion::ReverseMapLoadCompletion(int lsid_)
+: Callback(false, CallbackType_ReverseMapLoadCompletion),
+  lsid(lsid_)
+{
+    if (nullptr != debugInfo)
+    {
+        debugInfo->GetGcDebugInfo()->UpdateReverseMapLoadCompletionInfo(lsid, this);
+    }
 }
 
 ReverseMapLoadCompletion::~ReverseMapLoadCompletion(void)
@@ -50,6 +62,12 @@ ReverseMapLoadCompletion::_DoSpecificJob(void)
 {
     uint64_t objAddr = reinterpret_cast<uint64_t>(this);
     airlog("LAT_VictimLoad", "end", 0, objAddr);
+
+    if (nullptr != debugInfo)
+    {
+        debugInfo->GetGcDebugInfo()->ClearReverseMapLoadCompletionLog(lsid);
+    }
+
     return true;
 }
 

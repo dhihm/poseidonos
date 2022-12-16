@@ -52,6 +52,7 @@
 #include "src/logger/logger.h"
 #include "src/mapper/mapper.h"
 #include "src/mapper_service/mapper_service.h"
+#include "src/debug/debug_info.h"
 
 namespace pos
 {
@@ -108,6 +109,11 @@ GcMapUpdateCompletion::_DoSpecificJob(void)
     POS_TRACE_DEBUG(EID(GC_MAP_UPDATE_COMPLETION),
         "gc map update completion, arrayName:{}, stripeUserLsid:{}",
         arrayName, stripe->GetUserLsid());
+
+    if (nullptr != debugInfo)
+    {
+        debugInfo->GetGcDebugInfo()->ClearGcMapUpdateRequest(stripe->GetUserLsid());
+    }
 
     return true;
 }

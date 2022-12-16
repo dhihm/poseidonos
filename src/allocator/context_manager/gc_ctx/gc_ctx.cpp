@@ -35,6 +35,7 @@
 #include "src/allocator/context_manager/block_allocation_status.h"
 #include "src/include/pos_event_id.h"
 #include "src/logger/logger.h"
+#include "src/debug/debug_info.h"
 
 namespace pos
 {
@@ -64,6 +65,11 @@ GcCtx::SetNormalGcThreshold(uint32_t inputThreshold)
     normalGcThreshold = inputThreshold;
     POS_TRACE_TRACE(EID(GC_THRESHOLD_IS_SET), "normal_threshold:{}, array_id:{}",
         normalGcThreshold, arrayId);
+
+    if (nullptr != debugInfo)
+    {
+        debugInfo->GetGcDebugInfo()->SetNormalModeThreshold(normalGcThreshold);
+    }
 }
 
 void
@@ -72,6 +78,11 @@ GcCtx::SetUrgentThreshold(uint32_t inputThreshold)
     urgentGcThreshold = inputThreshold;
     POS_TRACE_TRACE(EID(GC_THRESHOLD_IS_SET), "urgent_threshold:{}, array_id:{}",
         urgentGcThreshold, arrayId);
+
+    if (nullptr != debugInfo)
+    {
+        debugInfo->GetGcDebugInfo()->SetUrgentModeThreshold(urgentGcThreshold);
+    }
 }
 
 GcMode
@@ -129,15 +140,13 @@ GcCtx::_PrintInfo(pos::GcMode newGcMode, uint32_t numFreeSegments)
     if (curGcMode != newGcMode)
     {
         POS_TRACE_INFO(EID(ALLOCATOR_CURRENT_GC_MODE),
-            "Change GC STATE from GCState:{} to {}}",
+            "Change GC mode from GcMode:{} to {}}",
             (uint32_t)curGcMode, (uint32_t)newGcMode);
 
-        // TODO (dh.ihm) want to print out this here...
-        /*
-        POSMetricValue v;
-        v.gauge = curGcMode;
-        telPublisher->PublishData(TEL30003_ALCT_GCMODE, v, MT_GAUGE);
-        */
+        if (nullptr != debugInfo)
+        {
+            debugInfo->GetGcDebugInfo()->UpdateGcModeInfo(newGcMode, numFreeSegments);
+        }
     }
 }
 

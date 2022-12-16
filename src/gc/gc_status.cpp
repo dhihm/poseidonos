@@ -95,6 +95,7 @@ GcStatus::SetCopyInfo(bool started, uint32_t victimSegment,
         gcRunning = false;
     }
 
+    
     return 0;
 }
 

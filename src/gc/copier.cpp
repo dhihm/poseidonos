@@ -50,6 +50,7 @@
 #include "src/io/general_io/io_submit_handler.h"
 #include "src/logger/logger.h"
 #include "src/metadata/segment_context_updater.h"
+#include "src/debug/debug_info.h"
 
 namespace pos
 {
@@ -128,6 +129,11 @@ Copier::Execute(void)
 
             default:
                 break;
+        }
+        
+        if (nullptr != debugInfo)
+        {
+            debugInfo->GetGcDebugInfo()->UpdateCopierState(copybackState);
         }
     }
 
@@ -220,6 +226,13 @@ Copier::_CompareThresholdState(void)
                 POS_TRACE_DEBUG(EID(GC_VICTIM_SELECTED), "victim_segment_id:{}, free_segment_count:{}, urgent_threshold:{}, normal_threshold:{}, array_id:{}",
                     victimId, numFreeSegments, urgentThreshold, normalThreshold, arrayId);
             }
+
+            int validBlockCount = iContextManager->GetSegmentCtx()->GetValidBlockCount(victimId);
+
+            if (nullptr != debugInfo)
+            {
+                debugInfo->GetGcDebugInfo()->UpdateAllocatedVictimInfo(victimId, validBlockCount, arrayId, numFreeSegments);
+            }
         }
     }
     gcBusyRetryCnt = 0;
@@ -248,7 +261,7 @@ Copier::_CopyPrepareState(void)
         CallbackSmartPtr callback;
         if (nullptr == reverseMapLoadCompletionPtr)
         {
-            callback = std::make_shared<ReverseMapLoadCompletion>();
+            callback = std::make_shared<ReverseMapLoadCompletion>(baseStripe + index);
         }
         else
         {
@@ -330,8 +343,23 @@ Copier::_CleanUpVictimSegments(void)
             segmentCtxUpdater->ResetInfos(victimSegId);
             POS_TRACE_INFO(EID(GC_RELEASE_VICTIM_SEGMENT),
                 "victim_segment_id:{}, count:{}", victimSegId, validCount);
+
+            if (nullptr != debugInfo)
+            {
+                debugInfo->GetGcDebugInfo()->UpdateFreedSegmentInfo(victimSegId);
+            }
         }
     }
 }
 
+void 
+Copier::_ChangeEventState(CopierStateType state)
+{
+    copybackState = state;
+
+    if (nullptr != debugInfo)
+    {
+        debugInfo->GetGcDebugInfo()->UpdateCopierState(state);
+    }
+}
 } // namespace pos

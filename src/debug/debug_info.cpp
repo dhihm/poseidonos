@@ -71,7 +71,6 @@
 
 namespace pos
 {
-
 DebugInfo* debugInfo;
 
 DebugInfo::DebugInfo(void)
@@ -111,12 +110,14 @@ DebugInfo::DebugInfo(void)
   posReplicatorManager(nullptr),
 #endif
   resourceChecker(nullptr),
-  ioTimeoutChecker(nullptr)
+  ioTimeoutChecker(nullptr),
+  gcDebugInfo(nullptr)
 {
 }
 
 DebugInfo::~DebugInfo(void)
 {
+    _DeleteSubDebugInfoModules();
 }
 // Exclude destructor of abstract class from function coverage report to avoid known issues in gcc/gcov
 // LCOV_EXCL_START
@@ -158,6 +159,24 @@ DebugInfo::Update(void)
 #endif
     resourceChecker = ResourceCheckerSingleton::Instance();
     ioTimeoutChecker = IoTimeoutCheckerSingleton::Instance();
+
+    CreateSubDebugInfoModules();
+}
+
+void
+DebugInfo::CreateSubDebugInfoModules(void)
+{
+    gcDebugInfo = new GcDebugInfo();
+}
+
+void
+DebugInfo::_DeleteSubDebugInfoModules(void)
+{
+    if (nullptr != gcDebugInfo)
+    {
+        delete gcDebugInfo;
+        gcDebugInfo = nullptr;
+    }
 }
 // LCOV_EXCL_STOP
 } // namespace pos

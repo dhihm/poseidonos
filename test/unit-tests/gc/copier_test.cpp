@@ -22,6 +22,7 @@
 #include "test/unit-tests/resource_manager/buffer_pool_mock.h"
 #include "test/unit-tests/resource_manager/memory_manager_mock.h"
 #include "test/unit-tests/allocator/context_manager/segment_ctx/segment_ctx_mock.h"
+#include "src/debug/debug_info.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -69,6 +70,15 @@ public:
         targetId = 0;
         baseStripeId = 0;
         copyIndex = 0;
+
+        if (nullptr != debugInfo)
+        {
+            delete debugInfo;
+        }
+
+        debugInfo = new DebugInfo();
+        debugInfo->CreateSubDebugInfoModules();
+
         array = new NiceMock<MockIArrayInfo>;
         EXPECT_CALL(*array, GetSizeInfo(_)).WillRepeatedly(Return(&partitionLogicalSize));
 
@@ -199,6 +209,14 @@ TEST_F(CopierTestFixture, Execute_testNormalGcAndGetUnmapSegmentId)
     EXPECT_CALL(*gcCtx, GetCurrentGcMode).WillOnce(Return(GcMode::MODE_NORMAL_GC));
     EXPECT_CALL(*iContextManager, AllocateGCVictimSegment()).WillOnce(Return(UNMAP_SEGMENT));
     EXPECT_FALSE(copier->Execute());
+
+    CopierState curState = debugInfo->GetGcDebugInfo()->GetCurrentCopierState();
+    CopierState prevState = debugInfo->GetGcDebugInfo()->GetPrevCopierState();
+
+    EXPECT_EQ(CopierStateType::COPIER_READY_TO_END_STATE, prevState.state);
+    EXPECT_EQ(CopierStateType::COPIER_THRESHOLD_CHECK_STATE, curState.state);
+
+    EXPECT_EQ(prevState.endTime, curState.beginTime);
 }
 
 TEST_F(CopierTestFixture, Execute_testNormalGcAndGetTestSegmentId)
@@ -234,6 +252,13 @@ TEST_F(CopierTestFixture, Execute_testPrepareState)
     // prepare gc state
     EXPECT_CALL(*meta, SetInUseBitmap()).WillOnce(Return(0));
     EXPECT_FALSE(copier->Execute());
+
+    CopierState curState = debugInfo->GetGcDebugInfo()->GetCurrentCopierState();
+    CopierState prevState = debugInfo->GetGcDebugInfo()->GetPrevCopierState();
+
+    EXPECT_EQ(CopierStateType::COPIER_COPY_PREPARE_STATE, prevState.state);
+    EXPECT_EQ(CopierStateType::COPIER_COPY_COMPLETE_STATE, curState.state);
+    EXPECT_EQ(prevState.endTime, curState.beginTime);
 }
 
 TEST_F(CopierTestFixture, Execute_testCompleteState)
@@ -250,19 +275,37 @@ TEST_F(CopierTestFixture, Execute_testCompleteState)
     EXPECT_CALL(*iContextManager, AllocateGCVictimSegment()).WillOnce(Return(TEST_SEGMENT_1));
     EXPECT_FALSE(copier->Execute());
 
+    CopierState curState = debugInfo->GetGcDebugInfo()->GetCurrentCopierState();
+    CopierState prevState = debugInfo->GetGcDebugInfo()->GetPrevCopierState();
+
+    EXPECT_EQ(CopierStateType::COPIER_READY_TO_END_STATE, prevState.state);
+    EXPECT_EQ(CopierStateType::COPIER_COPY_PREPARE_STATE, curState.state);
+
     // prepare gc state
     EXPECT_CALL(*meta, SetInUseBitmap()).WillOnce(Return(0));
     EXPECT_FALSE(copier->Execute());
+
+    EXPECT_EQ(CopierStateType::COPIER_READY_TO_END_STATE, prevState.state);
+    EXPECT_EQ(CopierStateType::COPIER_COPY_PREPARE_STATE, curState.state);
 
     // wait gc completion state
     EXPECT_CALL(*meta, IsSynchronized()).WillOnce(Return(false));
     EXPECT_CALL(*meta, IsCopyDone()).WillOnce(Return(false));
     EXPECT_FALSE(copier->Execute());
 
+    curState = debugInfo->GetGcDebugInfo()->GetCurrentCopierState();
+    prevState = debugInfo->GetGcDebugInfo()->GetPrevCopierState();
+
+    EXPECT_EQ(CopierStateType::COPIER_COPY_PREPARE_STATE, prevState.state);
+    EXPECT_EQ(CopierStateType::COPIER_COPY_COMPLETE_STATE, curState.state);
+
     // wait gc completion state done
     EXPECT_CALL(*meta, IsSynchronized()).WillOnce(Return(false));
     EXPECT_CALL(*meta, IsCopyDone()).WillOnce(Return(true));
     EXPECT_FALSE(copier->Execute());
+
+    EXPECT_EQ(CopierStateType::COPIER_COPY_PREPARE_STATE, prevState.state);
+    EXPECT_EQ(CopierStateType::COPIER_COPY_COMPLETE_STATE, curState.state);
 }
 
 TEST_F(CopierTestFixture, Execute_testDisableThresholdCheck)

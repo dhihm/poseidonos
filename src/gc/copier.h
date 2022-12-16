@@ -127,11 +127,7 @@ private:
     bool _IsSynchronized(void);
     bool _IsAllVictimSegmentCopyDone(void);
     void _CleanUpVictimSegments(void);
-    void
-    _ChangeEventState(CopierStateType state)
-    {
-        copybackState = state;
-    }
+    void _ChangeEventState(CopierStateType state);
 
     uint32_t userDataMaxStripes;
     uint32_t userDataMaxBlks;

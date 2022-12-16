@@ -41,6 +41,7 @@
 #include <test/unit-tests/mapper/i_vsamap_mock.h>
 #include <test/unit-tests/meta_service/i_meta_updater_mock.h>
 #include <test/unit-tests/utils/mock_builder.h>
+#include "src/debug/debug_info.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -143,7 +144,7 @@ TEST_F(GcMapUpdateRequestTestFixture, Execute_testIfExecutedSuccessfully)
 
     // when journal is enabled
     EXPECT_CALL(*stripe, GetWbLsid).WillOnce(Return(stripeId));
-    EXPECT_CALL(*stripe, GetUserLsid).WillOnce(Return(stripeId));
+    EXPECT_CALL(*stripe, GetUserLsid).WillRepeatedly(Return(stripeId));
     EXPECT_CALL(*metaUpdater, UpdateGcMap).Times(1);
 
     // then call add Gc stripe flushed log using journal write

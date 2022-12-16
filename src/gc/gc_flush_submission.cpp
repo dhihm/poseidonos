@@ -55,6 +55,7 @@
 #include "src/io/general_io/translator.h"
 #include "src/logger/logger.h"
 #include "src/volume/volume_service.h"
+#include "src/debug/debug_info.h"
 
 namespace pos
 {
@@ -182,6 +183,11 @@ GcFlushSubmission::Execute(void)
         "Flush Submission vsid  {}: StartLSA.stripeId : {} blocksInStripe : {}",
         stripe->GetVsid(), startLSA.stripeId, blocksInStripe);
 
+    if (nullptr != debugInfo)
+    {
+        debugInfo->GetGcDebugInfo()->UpdateGcFlushSubmission(logicalStripeId, this);
+    }
+    
     IOSubmitHandlerStatus errorReturned = iIOSubmitHandler->SubmitAsyncIO(
         IODirection::WRITE,
         bufferList,

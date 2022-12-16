@@ -39,6 +39,7 @@
 #include "src/gc/stripe_copier.h"
 #include "src/include/backend_event.h"
 #include "src/logger/logger.h"
+#include "src/debug/debug_info.h"
 
 namespace pos
 {
@@ -59,6 +60,11 @@ StripeCopySubmission::StripeCopySubmission(StripeId baseStripeId, CopierMeta* me
   eventScheduler(inputEventScheduler)
 {
     SetEventType(BackendEvent_GC);
+
+    if (nullptr != debugInfo)
+    {
+        debugInfo->GetGcDebugInfo()->UpdateStripeCopySubmissionLog(baseStripeId, BackendEvent_GC, this);
+    }
 }
 
 StripeCopySubmission::~StripeCopySubmission(void)
@@ -108,6 +114,12 @@ StripeCopySubmission::_DoSpecificJob(void)
     }
 
     POS_TRACE_DEBUG(EID(GC_COPY_SUBMISSION), "victim_segment:{}", copyIndex);
+
+    if (nullptr != debugInfo)
+    {
+        debugInfo->GetGcDebugInfo()->ClearStripeCopySubmissionLog(baseStripeId);
+    }
+
     return true;
 }
 

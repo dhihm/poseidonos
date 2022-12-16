@@ -51,6 +51,7 @@
 #include "src/io/general_io/rba_state_manager.h"
 #include "src/io/general_io/rba_state_service.h"
 #include "src/logger/logger.h"
+#include "src/debug/debug_info.h"
 
 namespace pos
 {
@@ -130,6 +131,12 @@ GcFlushCompletion::_DoSpecificJob(void)
     }
     gcStripeManager->UpdateMapRequested();
     stripe->Flush(event);
+
+    if (nullptr != debugInfo)
+    {
+        debugInfo->GetGcDebugInfo()->ClearGcFlushSubmission(stripe->GetUserLsid());
+    }
+    
     return true;
 }
 

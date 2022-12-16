@@ -17,6 +17,7 @@
 
 #include "test/unit-tests/resource_manager/memory_manager_mock.h"
 #include "test/unit-tests/resource_manager/buffer_pool_mock.h"
+#include "src/debug/debug_info.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -46,6 +47,14 @@ public:
     virtual void
     SetUp(void)
     {
+        if (nullptr != debugInfo)
+        {
+            delete debugInfo;
+        }
+
+        debugInfo = new DebugInfo();
+        debugInfo->CreateSubDebugInfoModules();
+
         testVolumeId = 1;
         arrayName = "POSArray";
         arrayIndex = 0;
@@ -92,6 +101,11 @@ public:
         delete flowControl;
         delete memoryManager;
 
+        if (nullptr != debugInfo)
+        {
+            delete debugInfo;
+            debugInfo = nullptr;
+        }
         inputEvent = nullptr;
     }
 
@@ -193,6 +207,12 @@ TEST_F(GcFlushSubmissionTestFixture, Execute_testIfExecuteWhenGetTokenAndAllocat
     // then submit async io for gc stripe flush
     EXPECT_TRUE(gcFlushSubmission->Execute() == true);
 
+    int lsid = testStripe->GetUserLsid();
+    GcFlushSubmissionInfo flushSubmissionInfo = debugInfo->GetGcDebugInfo()->GetGcFlushSubmissionInfo(lsid);
+
+    EXPECT_EQ(lsid, flushSubmissionInfo.lsid);
+    EXPECT_EQ(BackendEvent_Flush, flushSubmissionInfo.gcFlushSubmission->GetEventType());
+    
     dataBuffer->clear();
     delete dataBuffer;
     callback = nullptr;
