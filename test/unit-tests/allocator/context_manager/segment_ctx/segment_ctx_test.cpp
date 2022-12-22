@@ -7,6 +7,10 @@
 #include "test/unit-tests/allocator/context_manager/segment_ctx/segment_info_mock.h"
 #include "test/unit-tests/allocator/context_manager/segment_ctx/segment_list_mock.h"
 
+#include "src/debug/debug_info.h"
+#include "test/unit-tests/debug/gc_debug_info_mock.h"
+
+using namespace ::testing;
 using ::testing::_;
 using ::testing::AtLeast;
 using testing::NiceMock;
@@ -519,11 +523,14 @@ TEST(SegmentCtx, AllocateFreeSegment_testWhenFreeListIsEmpty)
     NiceMock<MockSegmentList> freeSegmentList;
     NiceMock<MockRebuildCtx>* rebuildCtx = new NiceMock<MockRebuildCtx>();
     NiceMock<MockTelemetryPublisher>* tp = new NiceMock<MockTelemetryPublisher>();
+    NiceMock<MockGcDebugInfo>* gcDebugInfo = new NiceMock<MockGcDebugInfo>();
+    debugInfo = new DebugInfo(gcDebugInfo);
 
     NiceMock<MockGcCtx> gcCtx;
     SegmentCtx segCtx(tp, nullptr, segInfos, nullptr, rebuildCtx, addrInfo, &gcCtx, 0);
     segCtx.SetSegmentList(SegmentState::FREE, &freeSegmentList);
 
+    EXPECT_CALL(*gcDebugInfo, UpdateAllocatedSegmentInfo(_)).Times(0);
     EXPECT_CALL(freeSegmentList, PopSegment).WillOnce(Return(UNMAP_SEGMENT));
     int ret = segCtx.AllocateFreeSegment();
     EXPECT_EQ(UNMAP_SEGMENT, ret);
@@ -532,6 +539,12 @@ TEST(SegmentCtx, AllocateFreeSegment_testWhenFreeListIsEmpty)
     delete[] segInfos;
     delete rebuildCtx;
     delete tp;
+
+    delete gcDebugInfo;
+    gcDebugInfo = nullptr;
+
+    delete debugInfo;
+    debugInfo = nullptr;
 }
 
 TEST(SegmentCtx, AllocateFreeSegment_testWhenSegmentIsAllocated)
@@ -542,6 +555,8 @@ TEST(SegmentCtx, AllocateFreeSegment_testWhenSegmentIsAllocated)
     NiceMock<MockSegmentList> freeSegmentList, nvramSegmentList;
     NiceMock<MockRebuildCtx>* rebuildCtx = new NiceMock<MockRebuildCtx>();
     NiceMock<MockTelemetryPublisher>* tp = new NiceMock<MockTelemetryPublisher>();
+    NiceMock<MockGcDebugInfo>* gcDebugInfo = new NiceMock<MockGcDebugInfo>();
+    debugInfo = new DebugInfo(gcDebugInfo);
 
     NiceMock<MockGcCtx> gcCtx;
     SegmentCtx segCtx(tp, nullptr, segInfos, nullptr, rebuildCtx, addrInfo, &gcCtx, 0);
@@ -553,6 +568,7 @@ TEST(SegmentCtx, AllocateFreeSegment_testWhenSegmentIsAllocated)
 
     EXPECT_CALL(gcCtx, UpdateCurrentGcMode);
 
+    EXPECT_CALL(*gcDebugInfo, UpdateAllocatedSegmentInfo(_)).Times(1);
     int ret = segCtx.AllocateFreeSegment();
     EXPECT_EQ(8, ret);
     EXPECT_EQ(segInfos[8].GetState(), SegmentState::NVRAM);
@@ -561,6 +577,12 @@ TEST(SegmentCtx, AllocateFreeSegment_testWhenSegmentIsAllocated)
     delete[] segInfos;
     delete rebuildCtx;
     delete tp;
+
+    delete gcDebugInfo;
+    gcDebugInfo = nullptr;
+
+    delete debugInfo;
+    debugInfo = nullptr;
 }
 
 TEST(SegmentCtx, AllocateGCVictimSegment_testWhenVictimSegmentIsFound)
@@ -570,6 +592,9 @@ TEST(SegmentCtx, AllocateGCVictimSegment_testWhenVictimSegmentIsFound)
     NiceMock<MockSegmentList> freeSegmentList, ssdSegmentList, victimSegmentList, rebuildSegmentList;
     NiceMock<MockTelemetryPublisher>* tp = new NiceMock<MockTelemetryPublisher>();
     SegmentInfo* segInfos = new SegmentInfo[4](0, 0, SegmentState::SSD);
+
+    NiceMock<MockGcDebugInfo>* gcDebugInfo = new NiceMock<MockGcDebugInfo>();
+    debugInfo = new DebugInfo(gcDebugInfo);
 
     NiceMock<MockGcCtx> gcCtx;
     SegmentCtx segCtx(tp, nullptr, segInfos, &rebuildSegmentList, nullptr, addrInfo, &gcCtx, 0);
@@ -588,12 +613,19 @@ TEST(SegmentCtx, AllocateGCVictimSegment_testWhenVictimSegmentIsFound)
     EXPECT_CALL(rebuildSegmentList, Contains(2)).WillOnce(Return(false));
     EXPECT_CALL(victimSegmentList, AddToList(2));
 
+    EXPECT_CALL(*gcDebugInfo, UpdateAllocatedVictimInfo(_, _, _, _)).Times(1);
     SegmentId victimSegment = segCtx.AllocateGCVictimSegment();
     EXPECT_EQ(victimSegment, 2);
 
     delete addrInfo;
     delete[] segInfos;
     delete tp;
+
+    delete gcDebugInfo;
+    gcDebugInfo = nullptr;
+
+    delete debugInfo;
+    debugInfo = nullptr;
 }
 
 TEST(SegmentCtx, AllocateGCVictimSegment_testWhenVictimSegmentIsFoundFromTheRebuildList)
@@ -636,6 +668,8 @@ TEST(SegmentCtx, AllocateGCVictimSegment_testWhenVictimSegmentIsNotFound)
     NiceMock<MockSegmentList> freeSegmentList, ssdSegmentList;
     NiceMock<MockTelemetryPublisher>* tp = new NiceMock<MockTelemetryPublisher>();
     SegmentInfo* segInfos = new SegmentInfo[4](10, 0, SegmentState::NVRAM);
+    NiceMock<MockGcDebugInfo>* gcDebugInfo = new NiceMock<MockGcDebugInfo>();
+    debugInfo = new DebugInfo(gcDebugInfo);
 
     NiceMock<MockGcCtx> gcCtx;
     SegmentCtx segCtx(tp, nullptr, segInfos, nullptr, nullptr, addrInfo, &gcCtx, 0);
@@ -645,12 +679,19 @@ TEST(SegmentCtx, AllocateGCVictimSegment_testWhenVictimSegmentIsNotFound)
     EXPECT_CALL(*addrInfo, GetnumUserAreaSegments).WillRepeatedly(Return(4));
     EXPECT_CALL(*addrInfo, GetblksPerSegment).WillRepeatedly(Return(10));
 
+    EXPECT_CALL(*gcDebugInfo, UpdateAllocatedVictimInfo(_, _, _, _)).Times(0);
     SegmentId victimSegment = segCtx.AllocateGCVictimSegment();
     EXPECT_EQ(victimSegment, UNMAP_SEGMENT);
 
     delete addrInfo;
     delete[] segInfos;
     delete tp;
+
+    delete gcDebugInfo;
+    gcDebugInfo = nullptr;
+
+    delete debugInfo;
+    debugInfo = nullptr;
 }
 
 TEST(SegmentCtx, DISABLED_ResetSegmentState_testIfSegmentStateChangedAsIntended)

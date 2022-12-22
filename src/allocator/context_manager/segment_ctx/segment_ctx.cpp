@@ -40,6 +40,8 @@
 #include "src/logger/logger.h"
 #include "src/telemetry/telemetry_client/telemetry_publisher.h"
 #include "src/qos/qos_manager.h"
+#include "src/debug/debug_info.h"
+
 namespace pos
 {
 SegmentCtx::SegmentCtx(TelemetryPublisher* tp_, SegmentCtxHeader* header, SegmentInfo* segmentInfo_,
@@ -445,6 +447,10 @@ SegmentCtx::AllocateFreeSegment(void)
             POS_TRACE_DEBUG(EID(ALLOCATOR_FREE_SEGMENT_ALLOCATION_SUCCESS),
                 "segment_id:{}, free_segment_count:{}, array_id:{}", segId, numFreeSegment, arrayId);
 
+            if (nullptr != debugInfo)
+            {
+                debugInfo->GetGcDebugInfo()->UpdateAllocatedSegmentInfo(segId);
+            }
             return segId;
         }
     }
@@ -477,7 +483,17 @@ SegmentCtx::AllocateGCVictimSegment(void)
     while ((victimSegmentId = _FindMostInvalidSSDSegment()) != UNMAP_SEGMENT)
     {
         bool successToSetVictim = _SetVictimSegment(victimSegmentId);
-        if (successToSetVictim == true) break;
+        if (successToSetVictim == true) 
+        {
+            if (nullptr != debugInfo)
+            {
+                int validBlockCount = segmentInfos[victimSegmentId].GetValidBlockCount();
+                int numFreeSegments = GetNumOfFreeSegment();
+                debugInfo->GetGcDebugInfo()->UpdateAllocatedVictimInfo(victimSegmentId,
+                    validBlockCount, arrayId, numFreeSegments);
+            }
+            break;
+        }
     }
 
     return victimSegmentId;

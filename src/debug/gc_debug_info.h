@@ -153,7 +153,7 @@ public:
     GcMode GetCurrentGcMode(void) { return curGcModeInfo.mode; }
     GcMode GetPrevGcMode(void) { return prevGcModeInfo.mode; }
 
-    GcFlushSubmissionInfo GetGcFlushSubmissionInfo(int lsid);
+    GcFlushSubmissionInfo GetGcFlushSubmissionLog(int lsid);
 
     virtual void SetNormalModeThreshold(int threshold) { normalModeThreshold = threshold; }
     virtual void SetUrgentModeThreshold(int threshold) { urgentModeThreshold = threshold; }
@@ -162,9 +162,9 @@ public:
     virtual void UpdateAllocatedVictimInfo(int victimId, int validBlockCount, int arrayId, int numFreeSegments);
     virtual void UpdateStripeCopySubmissionLog(int baseStripeId, BackendEvent event, StripeCopySubmission* callback);
     virtual void UpdateReverseMapLoadCompletionInfo(int lsid, ReverseMapLoadCompletion* callback);
-    virtual void UpdateFreedSegmentInfo(int victimId);
     virtual void UpdateGcFlushSubmission(int lsid, GcFlushSubmission* callback);
     virtual void UpdateGcMapUpdateRequest(int lsid, GcMapUpdateRequest* callback);
+    virtual void UpdateAllocatedSegmentInfo(int segmentId);
 
 private:
     const int MAX_LOG_COUNT = 20;
@@ -177,7 +177,6 @@ private:
 
     std::queue<AllocatedSegmentInfo> allocatedFreeSegmentHistory;
     std::queue<VictimSegmentInfo> victimSegmentHistory;
-    std::queue<FreedSegmentInfo> freedSegmentHistory;
     std::queue<CopierInfo> copierHistory;
 
     std::map<int, StripeCopySubmissionInfo> stripeCopySubmissionLog;

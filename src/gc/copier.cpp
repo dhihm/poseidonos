@@ -343,11 +343,6 @@ Copier::_CleanUpVictimSegments(void)
             segmentCtxUpdater->ResetInfos(victimSegId);
             POS_TRACE_INFO(EID(GC_RELEASE_VICTIM_SEGMENT),
                 "victim_segment_id:{}, count:{}", victimSegId, validCount);
-
-            if (nullptr != debugInfo)
-            {
-                debugInfo->GetGcDebugInfo()->UpdateFreedSegmentInfo(victimSegId);
-            }
         }
     }
 }

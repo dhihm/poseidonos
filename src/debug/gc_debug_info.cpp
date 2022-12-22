@@ -128,21 +128,6 @@ GcDebugInfo::UpdateAllocatedVictimInfo(int victimId, int validBlockCount, int ar
     victimSegmentHistory.push(info);
 }
 
-void
-GcDebugInfo::UpdateFreedSegmentInfo(int victimId)
-{
-    FreedSegmentInfo info;
-    info.segmentId = victimId;
-    time(&info.freedTime);
-
-    if (MAX_LOG_COUNT < freedSegmentHistory.size())
-    {
-        freedSegmentHistory.pop();
-    }
-
-    freedSegmentHistory.push(info);
-}
-
 void 
 GcDebugInfo::UpdateStripeCopySubmissionLog(int baseStripeId, BackendEvent event, StripeCopySubmission* callback)
 {
@@ -211,9 +196,23 @@ GcDebugInfo::ClearGcMapUpdateRequest(int lsid)
 }
 
 GcFlushSubmissionInfo
-GcDebugInfo::GetGcFlushSubmissionInfo(int lsid)
+GcDebugInfo::GetGcFlushSubmissionLog(int lsid)
 {
     return gcFlushSubmissionLog[lsid];
 }
 
+void
+GcDebugInfo::UpdateAllocatedSegmentInfo(int segmentId)
+{
+    AllocatedSegmentInfo info;
+    info.segmentId = segmentId;
+    time(&info.allocatedTime);
+
+    if (MAX_LOG_COUNT < allocatedFreeSegmentHistory.size())
+    {
+        allocatedFreeSegmentHistory.pop();
+    }
+
+    allocatedFreeSegmentHistory.push(info);
+}
 } // namespace pos

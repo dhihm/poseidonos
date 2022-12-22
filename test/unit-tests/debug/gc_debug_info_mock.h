@@ -21,9 +21,9 @@ public:
     MOCK_METHOD(void, UpdateStripeCopySubmissionLog,
         (int baseStripeId, BackendEvent event, StripeCopySubmission* callback), (override));
     MOCK_METHOD(void, UpdateReverseMapLoadCompletionInfo, (int lsid, ReverseMapLoadCompletion* callback), (override));
-    MOCK_METHOD(void, UpdateFreedSegmentInfo, (int victimId), (override));
     MOCK_METHOD(void, UpdateGcFlushSubmission, (int lsid, GcFlushSubmission* callback), (override));
     MOCK_METHOD(void, UpdateGcMapUpdateRequest, (int lsid, GcMapUpdateRequest* callback), (override));
+    MOCK_METHOD(void, UpdateAllocatedSegmentInfo, (int victimId), (override));
 };
 
 } // namespace pos
