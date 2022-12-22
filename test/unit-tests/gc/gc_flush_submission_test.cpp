@@ -18,6 +18,8 @@
 #include "test/unit-tests/resource_manager/memory_manager_mock.h"
 #include "test/unit-tests/resource_manager/buffer_pool_mock.h"
 #include "src/debug/debug_info.h"
+#include "src/debug/gc_debug_info.h"
+#include "test/unit-tests/debug/gc_debug_info_mock.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -36,7 +38,8 @@ public:
     : gcFlushSubmission(nullptr),
       array(nullptr),
       gcStripeManager(nullptr),
-      volumeEventPublisher(nullptr)
+      volumeEventPublisher(nullptr),
+      gcDebugInfo(nullptr)
     {
     }
 
@@ -52,8 +55,8 @@ public:
             delete debugInfo;
         }
 
-        debugInfo = new DebugInfo();
-        debugInfo->CreateSubDebugInfoModules();
+        gcDebugInfo = new NiceMock<MockGcDebugInfo>();
+        debugInfo = new DebugInfo(gcDebugInfo);
 
         testVolumeId = 1;
         arrayName = "POSArray";
@@ -100,6 +103,8 @@ public:
         delete ioSubmitHandler;
         delete flowControl;
         delete memoryManager;
+        delete gcDebugInfo;
+        gcDebugInfo = nullptr;
 
         if (nullptr != debugInfo)
         {
@@ -141,6 +146,8 @@ protected:
     .totalSegments = 100,
     };
     MockMemoryManager* memoryManager;
+
+    NiceMock<MockGcDebugInfo>* gcDebugInfo;
 };
 
 TEST_F(GcFlushSubmissionTestFixture, Execute_testIfgcFlushSubmissionExecuteWhenGetTokenFail)
@@ -152,7 +159,7 @@ TEST_F(GcFlushSubmissionTestFixture, Execute_testIfgcFlushSubmissionExecuteWhenG
     EXPECT_CALL(*flowControl, GetToken(_, _)).WillOnce(Return(-1));
 
     // when Execute
-    // then return false
+    // then return falseF
     EXPECT_TRUE(gcFlushSubmission->Execute() == false);
 
     delete stripe;
@@ -170,6 +177,7 @@ TEST_F(GcFlushSubmissionTestFixture, Execute_testIfgcFlushSubmissionExecuteWhenA
 
     // when Execute
     // then return false
+    EXPECT_CALL(*gcDebugInfo, UpdateGcFlushSubmission(_, _)).Times(0);
     EXPECT_TRUE(gcFlushSubmission->Execute() == false);
 
     delete stripe;
@@ -193,7 +201,8 @@ TEST_F(GcFlushSubmissionTestFixture, Execute_testIfExecuteWhenGetTokenAndAllocat
     void* buffer = (void*)0x20000000;
     dataBuffer->push_back(buffer);
     StripeSmartPtr testStripe(new NiceMock<MockStripe>());
-    callback = std::make_shared<MockGcFlushCompletion>(testStripe, arrayName, gcStripeManager, dataBuffer, nullptr, nullptr, array, nullptr);
+    callback = std::make_shared<MockGcFlushCompletion>(testStripe, arrayName, gcStripeManager,
+        dataBuffer, nullptr, nullptr, array, nullptr);
 
     gcFlushSubmission = new GcFlushSubmission(arrayName, blkInfoList, testVolumeId,
                         dataBuffer, gcStripeManager, callback, blockAllocator,
@@ -205,14 +214,9 @@ TEST_F(GcFlushSubmissionTestFixture, Execute_testIfExecuteWhenGetTokenAndAllocat
 
     // when execute
     // then submit async io for gc stripe flush
+    EXPECT_CALL(*gcDebugInfo, UpdateGcFlushSubmission(_, _)).Times(1);
     EXPECT_TRUE(gcFlushSubmission->Execute() == true);
 
-    int lsid = testStripe->GetUserLsid();
-    GcFlushSubmissionInfo flushSubmissionInfo = debugInfo->GetGcDebugInfo()->GetGcFlushSubmissionInfo(lsid);
-
-    EXPECT_EQ(lsid, flushSubmissionInfo.lsid);
-    EXPECT_EQ(BackendEvent_Flush, flushSubmissionInfo.gcFlushSubmission->GetEventType());
-    
     dataBuffer->clear();
     delete dataBuffer;
     callback = nullptr;

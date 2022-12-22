@@ -3,6 +3,8 @@
 #include <gtest/gtest.h>
 #include "src/allocator/context_manager/gc_ctx/gc_ctx.h"
 #include "test/unit-tests/allocator/context_manager/block_allocation_status_mock.h"
+#include "src/debug/gc_debug_info.h"
+#include "test/unit-tests/debug/gc_debug_info_mock.h"
 
 using namespace ::testing;
 using testing::NiceMock;
@@ -21,10 +23,9 @@ TEST(DebugInfo, DebugInfo)
 
 TEST(DebugInfo, UpdateGcDebugInfo_CheckGcModeThresholdUpdate)
 {
-    debugInfo = new DebugInfo();
-    debugInfo->CreateSubDebugInfoModules();
+    GcDebugInfo* gcDebugInfo = new GcDebugInfo();
+    debugInfo = new DebugInfo(gcDebugInfo);
 
-    GcDebugInfo* gcDebugInfo = debugInfo->GetGcDebugInfo();
     int normalModeThreshold = 20;
     int urgentModeThreshold = 5;
 
@@ -46,16 +47,15 @@ TEST(DebugInfo, UpdateGcDebugInfo_CheckGcModeThresholdUpdate)
     EXPECT_EQ(urgentModeThreshold, urgentModeThresholdInDebugInfo);
 
     delete gcCtx;
+    delete gcDebugInfo;
     delete debugInfo;
     debugInfo = nullptr;
 }
 
 TEST(DebugInfo, UpdateGcDebugInfo_CheckGcModeUpdate)
 {
-    debugInfo = new DebugInfo();
-    debugInfo->CreateSubDebugInfoModules();
-    
-    GcDebugInfo* gcDebugInfo = debugInfo->GetGcDebugInfo();
+    GcDebugInfo* gcDebugInfo = new GcDebugInfo();
+    debugInfo = new DebugInfo(gcDebugInfo);
 
     NiceMock<MockBlockAllocationStatus>* blockAllocStatus = new NiceMock<MockBlockAllocationStatus>();
     int arrayId = 0;
@@ -83,15 +83,15 @@ TEST(DebugInfo, UpdateGcDebugInfo_CheckGcModeUpdate)
     EXPECT_EQ(curGcMode, curGcModeInDebugInfo);
 
     delete gcCtx;
+    delete gcDebugInfo;
     delete debugInfo;
     debugInfo = nullptr;
 }
 
 TEST(DebugInfo, UpdateGcDebugInfo_CheckGcModeInfoUpdate)
 {
-    debugInfo = new DebugInfo();
-    debugInfo->CreateSubDebugInfoModules();
-    GcDebugInfo* gcDebugInfo = debugInfo->GetGcDebugInfo();
+    GcDebugInfo* gcDebugInfo = new GcDebugInfo();
+    debugInfo = new DebugInfo(gcDebugInfo);
 
     NiceMock<MockBlockAllocationStatus>* blockAllocStatus = new NiceMock<MockBlockAllocationStatus>();
     int arrayId = 0;
@@ -151,6 +151,7 @@ TEST(DebugInfo, UpdateGcDebugInfo_CheckGcModeInfoUpdate)
 
     delete blockAllocStatus;
     delete gcCtx;
+    delete gcDebugInfo;
     delete debugInfo;
     debugInfo = nullptr;
 }

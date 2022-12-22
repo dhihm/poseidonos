@@ -136,10 +136,10 @@ public:
     GcDebugInfo(void);
     ~GcDebugInfo(void);
 
-    void ClearReverseMapLoadCompletionLog(int index);
-    void ClearStripeCopySubmissionLog(int baseStripeId);
-    void ClearGcFlushSubmission(int lsid);
-    void ClearGcMapUpdateRequest(int lsid);
+    virtual void ClearReverseMapLoadCompletionLog(int index);
+    virtual void ClearStripeCopySubmissionLog(int baseStripeId);
+    virtual void ClearGcFlushSubmission(int lsid);
+    virtual void ClearGcMapUpdateRequest(int lsid);
     
     GcModeInfo GetPrevGcModeInfo(void) { return prevGcModeInfo; }
     GcModeInfo GetCurGcModeInfo(void) { return curGcModeInfo; }
@@ -155,16 +155,16 @@ public:
 
     GcFlushSubmissionInfo GetGcFlushSubmissionInfo(int lsid);
 
-    void SetNormalModeThreshold(int threshold) { normalModeThreshold = threshold; }
-    void SetUrgentModeThreshold(int threshold) { urgentModeThreshold = threshold; }
-    void UpdateGcModeInfo(GcMode mode, int numFreeSegment);
-    void UpdateCopierState(CopierStateType state);
-    void UpdateAllocatedVictimInfo(int victimId, int validBlockCount, int arrayId, int numFreeSegments);
-    void UpdateStripeCopySubmissionLog(int baseStripeId, BackendEvent event, StripeCopySubmission* callback);
-    void UpdateReverseMapLoadCompletionInfo(int lsid, ReverseMapLoadCompletion* callback);
-    void UpdateFreedSegmentInfo(int victimId);
-    void UpdateGcFlushSubmission(int lsid, GcFlushSubmission* callback);
-    void UpdateGcMapUpdateRequest(int lsid, GcMapUpdateRequest* callback);
+    virtual void SetNormalModeThreshold(int threshold) { normalModeThreshold = threshold; }
+    virtual void SetUrgentModeThreshold(int threshold) { urgentModeThreshold = threshold; }
+    virtual void UpdateGcModeInfo(GcMode mode, int numFreeSegment);
+    virtual void UpdateCopierState(CopierStateType state);
+    virtual void UpdateAllocatedVictimInfo(int victimId, int validBlockCount, int arrayId, int numFreeSegments);
+    virtual void UpdateStripeCopySubmissionLog(int baseStripeId, BackendEvent event, StripeCopySubmission* callback);
+    virtual void UpdateReverseMapLoadCompletionInfo(int lsid, ReverseMapLoadCompletion* callback);
+    virtual void UpdateFreedSegmentInfo(int victimId);
+    virtual void UpdateGcFlushSubmission(int lsid, GcFlushSubmission* callback);
+    virtual void UpdateGcMapUpdateRequest(int lsid, GcMapUpdateRequest* callback);
 
 private:
     const int MAX_LOG_COUNT = 20;

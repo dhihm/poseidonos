@@ -74,6 +74,11 @@ namespace pos
 DebugInfo* debugInfo;
 
 DebugInfo::DebugInfo(void)
+: DebugInfo(nullptr)
+{
+}
+
+DebugInfo::DebugInfo(GcDebugInfo* gcDebugInfo_)
 : affinityManager(nullptr),
   allocatorService(nullptr),
   arrayManager(nullptr),
@@ -111,13 +116,12 @@ DebugInfo::DebugInfo(void)
 #endif
   resourceChecker(nullptr),
   ioTimeoutChecker(nullptr),
-  gcDebugInfo(nullptr)
+  gcDebugInfo(gcDebugInfo_)
 {
 }
 
 DebugInfo::~DebugInfo(void)
 {
-    _DeleteSubDebugInfoModules();
 }
 // Exclude destructor of abstract class from function coverage report to avoid known issues in gcc/gcov
 // LCOV_EXCL_START
@@ -159,24 +163,6 @@ DebugInfo::Update(void)
 #endif
     resourceChecker = ResourceCheckerSingleton::Instance();
     ioTimeoutChecker = IoTimeoutCheckerSingleton::Instance();
-
-    CreateSubDebugInfoModules();
-}
-
-void
-DebugInfo::CreateSubDebugInfoModules(void)
-{
-    gcDebugInfo = new GcDebugInfo();
-}
-
-void
-DebugInfo::_DeleteSubDebugInfoModules(void)
-{
-    if (nullptr != gcDebugInfo)
-    {
-        delete gcDebugInfo;
-        gcDebugInfo = nullptr;
-    }
 }
 // LCOV_EXCL_STOP
 } // namespace pos

@@ -88,16 +88,13 @@ class DebugInfo : public DebugInfoUpdater
 {
 public:
     DebugInfo(void);
+    DebugInfo(GcDebugInfo* gcDebugInfo_);
     ~DebugInfo(void) override;
 
     void Update(void) override;
-    void CreateSubDebugInfoModules(void);
-
     GcDebugInfo* GetGcDebugInfo(void) { return gcDebugInfo; }
 
 private:
-    void _DeleteSubDebugInfoModules(void);
-    
     AffinityManager* affinityManager;
     AllocatorService* allocatorService;
     ArrayManager* arrayManager;

@@ -215,4 +215,5 @@ GcDebugInfo::GetGcFlushSubmissionInfo(int lsid)
 {
     return gcFlushSubmissionLog[lsid];
 }
+
 } // namespace pos

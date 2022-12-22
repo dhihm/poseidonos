@@ -14,6 +14,9 @@
 
 #include "test/unit-tests/resource_manager/memory_manager_mock.h"
 #include "test/unit-tests/resource_manager/buffer_pool_mock.h"
+#include "src/gc/gc_flush_submission.h"
+#include "src/debug/debug_info.h"
+#include "test/unit-tests/debug/gc_debug_info_mock.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -31,7 +34,8 @@ public:
     : gcFlushCompletion(nullptr),
       array(nullptr),
       gcStripeManager(nullptr),
-      volumeEventPublisher(nullptr)
+      volumeEventPublisher(nullptr),
+      gcDebugInfo(nullptr)
     {
     }
 
@@ -42,6 +46,14 @@ public:
     virtual void
     SetUp(void)
     {
+        if (nullptr != debugInfo)
+        {
+            delete debugInfo;
+        }
+
+        gcDebugInfo = new NiceMock<MockGcDebugInfo>();
+        debugInfo = new DebugInfo(gcDebugInfo);
+
         testVolumeId = 1;
         arrayName = "POSArray";
 
@@ -82,6 +94,14 @@ public:
         delete volumeEventPublisher;
         delete rbaStateManager;
         delete memoryManager;
+        delete gcDebugInfo;
+        gcDebugInfo = nullptr;
+
+        if (nullptr != debugInfo)
+        {
+            delete debugInfo;
+            debugInfo = nullptr;
+        }
 
         inputEvent = nullptr;
         stripeSmartPtr = nullptr;
@@ -93,6 +113,7 @@ protected:
     uint32_t testVolumeId;
     std::string arrayName;
 
+    NiceMock<MockGcDebugInfo>* gcDebugInfo;
     NiceMock<MockIArrayInfo>* array;
     NiceMock<MockVolumeEventPublisher>* volumeEventPublisher;
     NiceMock<MockGcStripeManager>* gcStripeManager;
@@ -178,8 +199,10 @@ TEST_F(GcFlushCompletionTestFixture, Execute_testgcFlushExecuteWhenAcquireOwners
     list<RbaAndSize>* rbaList = gcFlushCompletion->GetRbaList();
     EXPECT_CALL(*rbaStateManager, AcquireOwnershipRbaList(testVolumeId, _, _, _)).WillOnce(Return(rbaList->end()));
     EXPECT_CALL(*stripe, Flush(inputEvent)).Times(1);
+    
     // when gc flush completion
     // then return true and stripe flushed
+    EXPECT_CALL(*gcDebugInfo, ClearGcFlushSubmission(_)).Times(1);
     EXPECT_TRUE(gcFlushCompletion->Execute() == true);
 }
 

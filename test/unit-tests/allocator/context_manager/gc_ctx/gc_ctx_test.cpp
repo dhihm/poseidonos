@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 #include "test/unit-tests/allocator/context_manager/block_allocation_status_mock.h"
 #include "src/debug/debug_info.h"
+#include "test/unit-tests/debug/gc_debug_info_mock.h"
 
 using testing::NiceMock;
 
@@ -33,8 +34,8 @@ TEST(GcCtx, UpdateCurrentGcModeAndDebugInfo_ByNumberOfFreeSegment)
         delete debugInfo;
     }
 
-    debugInfo = new DebugInfo();
-    debugInfo->CreateSubDebugInfoModules();
+    GcDebugInfo* gcDebugInfo = new GcDebugInfo();
+    debugInfo = new DebugInfo(gcDebugInfo);
 
     NiceMock<MockBlockAllocationStatus> blockAllocStatus;
     GcCtx* gcCtx = new GcCtx(&blockAllocStatus, 0);
@@ -102,6 +103,7 @@ TEST(GcCtx, UpdateCurrentGcModeAndDebugInfo_ByNumberOfFreeSegment)
     EXPECT_EQ(MODE_NORMAL_GC, prevModeInfo.mode);
     EXPECT_EQ(MODE_NO_GC, curModeInfo.mode);
 
+    delete gcDebugInfo;
     delete debugInfo;
     debugInfo = nullptr;
 

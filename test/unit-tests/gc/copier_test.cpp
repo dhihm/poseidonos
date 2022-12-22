@@ -23,6 +23,8 @@
 #include "test/unit-tests/resource_manager/memory_manager_mock.h"
 #include "test/unit-tests/allocator/context_manager/segment_ctx/segment_ctx_mock.h"
 #include "src/debug/debug_info.h"
+#include "src/debug/gc_debug_info.h"
+#include "test/unit-tests/debug/gc_debug_info_mock.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -55,7 +57,8 @@ public:
       stripeCopySubmissionPtr(nullptr),
       gcCtx(nullptr),
       segCtx(nullptr),
-      reverseMapLoadCompletionPtr(nullptr)
+      reverseMapLoadCompletionPtr(nullptr),
+      gcDebugInfo(nullptr)
     {
     }
 
@@ -76,8 +79,13 @@ public:
             delete debugInfo;
         }
 
-        debugInfo = new DebugInfo();
-        debugInfo->CreateSubDebugInfoModules();
+        if (nullptr != gcDebugInfo)
+        {
+            delete gcDebugInfo;
+        }
+
+        gcDebugInfo = new GcDebugInfo();
+        debugInfo = new DebugInfo(gcDebugInfo);
 
         array = new NiceMock<MockIArrayInfo>;
         EXPECT_CALL(*array, GetSizeInfo(_)).WillRepeatedly(Return(&partitionLogicalSize));
@@ -142,6 +150,12 @@ public:
     virtual void
     TearDown(void)
     {
+        delete gcDebugInfo;
+        gcDebugInfo = nullptr;
+
+        delete debugInfo;
+        debugInfo = nullptr;
+        
         delete copier;
         delete array;
         delete gcCtx;
@@ -190,6 +204,8 @@ protected:
     .totalSegments = 300,
     };
 
+    GcDebugInfo* gcDebugInfo;
+
     uint32_t TEST_SEGMENT_1 = 100;
     uint32_t TEST_SEGMENT_2 = 200;
     uint32_t TEST_SEGMENT_1_BASE_STRIPE_ID = TEST_SEGMENT_1 * partitionLogicalSize.stripesPerSegment;
@@ -210,8 +226,8 @@ TEST_F(CopierTestFixture, Execute_testNormalGcAndGetUnmapSegmentId)
     EXPECT_CALL(*iContextManager, AllocateGCVictimSegment()).WillOnce(Return(UNMAP_SEGMENT));
     EXPECT_FALSE(copier->Execute());
 
-    CopierState curState = debugInfo->GetGcDebugInfo()->GetCurrentCopierState();
-    CopierState prevState = debugInfo->GetGcDebugInfo()->GetPrevCopierState();
+    CopierState curState = gcDebugInfo->GetCurrentCopierState();
+    CopierState prevState = gcDebugInfo->GetPrevCopierState();
 
     EXPECT_EQ(CopierStateType::COPIER_READY_TO_END_STATE, prevState.state);
     EXPECT_EQ(CopierStateType::COPIER_THRESHOLD_CHECK_STATE, curState.state);

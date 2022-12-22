@@ -89,5 +89,7 @@ private:
     SignalHandler* signalHandler = nullptr;
 
     std::thread *GrpcCliServerThread = nullptr;
+
+    GcDebugInfo* gcDebugInfo;
 };
 } // namespace pos
