@@ -149,6 +149,8 @@ TEST(DebugInfo, UpdateGcDebugInfo_CheckGcModeInfoUpdate)
     EXPECT_EQ(expectedPrevGcMode, prevGcModeInDebugInfo);
     EXPECT_EQ(expectedCurGcMode, curGcModeInDebugInfo);
 
+    debugInfo->GetGcDebugInfo()->Snapshot();
+
     delete blockAllocStatus;
     delete gcCtx;
     delete gcDebugInfo;

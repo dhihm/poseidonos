@@ -36,6 +36,7 @@
 #include "mk/ibof_config.h"
 #include "src/allocator/include/allocator_const.h"
 #include "src/gc/copier.h"
+#include "cereal/archives/json.hpp"
 
 namespace pos
 {
@@ -48,6 +49,13 @@ struct AllocatedSegmentInfo
 {
     int segmentId;
     time_t allocatedTime;
+
+    template <class Archive>
+    void serialize(Archive& archive)
+    {
+        archive(CEREAL_NVP(segmentId),
+            CEREAL_NVP(allocatedTime));
+    }
 };
 
 struct VictimSegmentInfo
@@ -57,6 +65,16 @@ struct VictimSegmentInfo
     int numFreeSegments;
     int validBlockCount;
     time_t selectedTime;
+
+    template <class Archive>
+    void serialize(Archive& archive)
+    {
+        archive(CEREAL_NVP(segmentId),
+            CEREAL_NVP(arrayId),
+            CEREAL_NVP(numFreeSegments), 
+            CEREAL_NVP(validBlockCount),
+            CEREAL_NVP(selectedTime));
+    }
 };
 
 struct FreedSegmentInfo
@@ -70,6 +88,14 @@ struct CopierState
     CopierStateType state;
     time_t beginTime;
     time_t endTime;
+
+    template <class Archive>
+    void serialize(Archive& archive)
+    {
+        archive(CEREAL_NVP(state),
+            CEREAL_NVP(beginTime),
+            CEREAL_NVP(endTime));
+    }
 };
 
 struct CopierInfo
@@ -79,6 +105,16 @@ struct CopierInfo
     int copiedBlockCount;
     time_t beginTime;
     time_t endTime;
+
+    template <class Archive>
+    void serialize(Archive& archive)
+    {
+        archive(CEREAL_NVP(segmentId),
+            CEREAL_NVP(invalidBlockCount),
+            CEREAL_NVP(copiedBlockCount), 
+            CEREAL_NVP(beginTime),
+            CEREAL_NVP(endTime));
+    }
 };
 
 struct CopyDoneInfo
@@ -86,6 +122,14 @@ struct CopyDoneInfo
     int requestStripeCount;
     int requestBlockCount;
     int doneBlockCount;
+
+    template <class Archive>
+    void serialize(Archive& archive)
+    {
+        archive(CEREAL_NVP(requestStripeCount),
+            CEREAL_NVP(requestBlockCount),
+            CEREAL_NVP(doneBlockCount));
+    }
 };
 
 struct StripeCopySubmissionInfo
@@ -128,13 +172,42 @@ struct GcModeInfo
 
     time_t beginTime;
     time_t endTime;
+
+    GcModeInfo& operator=(const GcModeInfo from)
+    {
+        this->beginTime = from.beginTime;
+        this->copierState = from.copierState;
+        this->copyDoneInfo = from.copyDoneInfo;
+        this->endTime = from.endTime;
+        this->gcRunning = from.gcRunning;
+        this->gcState = from.gcState;
+        this->initialFreeSegmentCount = from.initialFreeSegmentCount;
+        this->mode = from.mode;
+        this->remainFreeSegmentCount = from.remainFreeSegmentCount;
+
+        return *this;
+    }
+
+    template <class Archive>
+    void serialize(Archive& archive)
+    {
+        archive(CEREAL_NVP(mode),
+            CEREAL_NVP(initialFreeSegmentCount),
+            CEREAL_NVP(remainFreeSegmentCount),
+            CEREAL_NVP(gcState),
+            CEREAL_NVP(copierState),
+            CEREAL_NVP(gcRunning),
+            CEREAL_NVP(copyDoneInfo),
+            CEREAL_NVP(beginTime),
+            CEREAL_NVP(endTime));
+    }
 };
 
 class GcDebugInfo
 {
 public:
     GcDebugInfo(void);
-    ~GcDebugInfo(void);
+    virtual ~GcDebugInfo(void);
 
     virtual void ClearReverseMapLoadCompletionLog(int index);
     virtual void ClearStripeCopySubmissionLog(int baseStripeId);
@@ -166,8 +239,10 @@ public:
     virtual void UpdateGcMapUpdateRequest(int lsid, GcMapUpdateRequest* callback);
     virtual void UpdateAllocatedSegmentInfo(int segmentId);
 
+    void Snapshot(void);
+
 private:
-    const int MAX_LOG_COUNT = 20;
+    const uint32_t MAX_LOG_COUNT = 20;
 
     int normalModeThreshold;
     int urgentModeThreshold;

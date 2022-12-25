@@ -32,9 +32,9 @@
 
 #include "journal_status_provider.h"
 
-#include <rapidjson/document.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
+#include "src/debug/cereal/external/rapidjson/document.h"
+#include "src/debug/cereal/external/rapidjson/stringbuffer.h"
+#include "src/debug/cereal/external/rapidjson/writer.h"
 
 #include "i_checkpoint_status.h"
 #include "i_log_buffer_status.h"

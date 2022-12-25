@@ -295,7 +295,7 @@ Poseidonos::_InitDebugInfo(void)
     debugInfo = new DebugInfo(gcDebugInfo);
     debugInfoUpdater = debugInfo;
     debugInfo->Update();
-    
+
     int ret;
     ret = system("mkdir -p /etc/pos/core");
     if (ret != 0)
@@ -494,11 +494,7 @@ Poseidonos::_RunCLIService(void)
 }
 
 int
-Poseidonos::_InitTraceExporter(char *procFullName,
-    ConfigManager *cm,
-    VersionProvider *vp,
-    TraceExporter *te
-    )
+Poseidonos::_InitTraceExporter(char *procFullName, ConfigManager *cm, VersionProvider *vp, TraceExporter *te)
 {
     bool traceEnabled = false;
     int ret = cm->GetValue("trace", "enable", &traceEnabled, ConfigType::CONFIG_TYPE_BOOL);

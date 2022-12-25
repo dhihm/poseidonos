@@ -35,7 +35,7 @@
 #include <string>
 #include <vector>
 
-#include <rapidjson/document.h>
+#include "src/debug/cereal/external/rapidjson/document.h"
 #include "src/lib/singleton.h"
 
 using namespace std;

@@ -30,11 +30,14 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <iostream>
+#include <fstream>
 #include "src/debug/gc_debug_info.h"
 #include "src/gc/gc_flush_submission.h"
 #include "src/gc/stripe_copy_submission.h"
 #include "src/gc/reverse_map_load_completion.h"
 #include "src/gc/gc_map_update_request.h"
+#include "cereal/archives/json.hpp"
 
 namespace pos
 {
@@ -214,5 +217,19 @@ GcDebugInfo::UpdateAllocatedSegmentInfo(int segmentId)
     }
 
     allocatedFreeSegmentHistory.push(info);
+}
+
+void 
+GcDebugInfo::Snapshot(void)
+{
+    std::ofstream out("Test.dat", ios::binary);
+    {
+        GcModeInfo gcModeInfo;
+        gcModeInfo = curGcModeInfo;
+
+        cereal::JSONOutputArchive archive(out);
+        archive(CEREAL_NVP(gcModeInfo));
+        out.close();
+    }
 }
 } // namespace pos

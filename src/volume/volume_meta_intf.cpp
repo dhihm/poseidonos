@@ -32,7 +32,7 @@
 
 #include "src/volume/volume_meta_intf.h"
 
-#include <rapidjson/document.h>
+#include "src/debug/cereal/external/rapidjson/document.h" 
 #include <string>
 #include "src/metafs/include/metafs_service.h"
 #include "src/helper/json/json_helper.h"

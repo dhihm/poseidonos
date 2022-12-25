@@ -14,7 +14,6 @@ TEST(ReverseMapLoadCompletion, Execute_Invoke)
     NiceMock<MockGcDebugInfo>* gcDebugInfo = new NiceMock<MockGcDebugInfo>();
     debugInfo = new DebugInfo(gcDebugInfo);
 
-    EXPECT_CALL(*gcDebugInfo, UpdateReverseMapLoadCompletionInfo(_, _)).Times(1);
     EXPECT_CALL(*gcDebugInfo, ClearReverseMapLoadCompletionLog(_)).Times(1);
 
     ReverseMapLoadCompletion* revMapLoadCompletion = new ReverseMapLoadCompletion();

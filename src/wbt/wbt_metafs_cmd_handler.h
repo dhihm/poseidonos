@@ -37,9 +37,9 @@
 #include <string>
 #include <vector>
 
-#include <rapidjson/document.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
+#include "src/debug/cereal/external/rapidjson/document.h"
+#include "src/debug/cereal/external/rapidjson/stringbuffer.h"
+#include "src/debug/cereal/external/rapidjson/writer.h"
 
 #include "nlohmann/json.hpp"
 #include "src/helper/json/json_helper.h"

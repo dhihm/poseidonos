@@ -33,10 +33,12 @@
 #include "config_manager.h"
 
 #include <fcntl.h>
-#include <rapidjson/document.h>
-#include <rapidjson/error/error.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
+
+#include "src/debug/cereal/external/rapidjson/document.h"
+#include "src/debug/cereal/external/rapidjson/error/error.h"
+#include "src/debug/cereal/external/rapidjson/stringbuffer.h"
+#include "src/debug/cereal/external/rapidjson/writer.h"
+
 #include <unistd.h>
 
 #include <fstream>
