@@ -41,6 +41,7 @@
 #include "src/journal_manager/log_buffer/callback_sequence_controller.h"
 #include "src/logger/logger.h"
 #include "src/telemetry/telemetry_client/telemetry_publisher.h"
+#include "src/debug/debug_info.h"
 
 namespace pos
 {
@@ -92,6 +93,8 @@ CheckpointManager::Init(IMapFlush* mapFlush, IContextManager* ctxManager,
 int
 CheckpointManager::RequestCheckpoint(int logGroupId, EventSmartPtr cb)
 {
+    debugInfo->GetGcDebugInfo()->Snapshot();
+
     CheckpointRequest request = {
         .groupId = logGroupId,
         .callback = cb};

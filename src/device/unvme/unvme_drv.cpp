@@ -283,7 +283,7 @@ UnvmeDrv::DeviceAttached(struct spdk_nvme_ns* ns, int nsid,
 
     if (nullptr != attach_event)
     {
-        uint64_t diskSize = spdkNvmeCaller->SpdkNvmeNsGetSize(ns);
+        uint64_t diskSize = spdkNvmeCaller->SpdkNvmeNsGetSize(ns) / 32;
         UblockSharedPtr dev = make_shared<UnvmeSsd>(deviceName, diskSize, this,
             ns, trid->traddr);
         POS_EVENT_ID eventId = EID(UNVME_SSD_DEBUG_CREATED);

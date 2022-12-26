@@ -37,6 +37,8 @@
 #include "src/allocator/include/allocator_const.h"
 #include "src/gc/copier.h"
 #include "cereal/archives/json.hpp"
+#include <iostream>
+#include <fstream>
 
 namespace pos
 {
@@ -255,9 +257,18 @@ private:
     std::queue<CopierInfo> copierHistory;
 
     std::map<int, StripeCopySubmissionInfo> stripeCopySubmissionLog;
+    std::mutex stripeCopySubmissionLock;
+
     std::map<int, ReverseMapLoadCompletionInfo> reverseMapLoadCompletionLog;
+    std::mutex reverseMapLoadCompletionLock;
+
     std::map<int, GcFlushSubmissionInfo> gcFlushSubmissionLog;
+    std::mutex gcFlushSubmissionLock;
+
     std::map<int, GcMapUpdateRequestInfo> gcMapUpdateRequestLog;
+    std::mutex gcMapUpdateRequestLock;
+
+    std::ofstream out;
 };
 } // namespace pos
 #endif // GC_DEBUG_INFO_H_

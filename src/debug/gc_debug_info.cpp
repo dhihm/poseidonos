@@ -74,11 +74,12 @@ GcDebugInfo::GcDebugInfo(void)
     curGcModeInfo.copyDoneInfo.doneBlockCount = 0;
     curGcModeInfo.copyDoneInfo.requestBlockCount = 0;
     curGcModeInfo.copyDoneInfo.requestStripeCount = 0;
+    out.open("Test.dat", ios::binary);
 }
 
 GcDebugInfo::~GcDebugInfo(void)
 {
-
+     out.close();
 }
 
 void
@@ -134,6 +135,7 @@ GcDebugInfo::UpdateAllocatedVictimInfo(int victimId, int validBlockCount, int ar
 void 
 GcDebugInfo::UpdateStripeCopySubmissionLog(int baseStripeId, BackendEvent event, StripeCopySubmission* callback)
 {
+    std::lock_guard<std::mutex> guard(stripeCopySubmissionLock);
     StripeCopySubmissionInfo info;
     info.event = event;
     info.stripeCopySubmission = callback;
@@ -145,12 +147,14 @@ GcDebugInfo::UpdateStripeCopySubmissionLog(int baseStripeId, BackendEvent event,
 void
 GcDebugInfo::ClearStripeCopySubmissionLog(int baseStripeId)
 {
+    std::lock_guard<std::mutex> guard(stripeCopySubmissionLock);
     stripeCopySubmissionLog.erase(baseStripeId);
 }
 
 void
 GcDebugInfo::UpdateReverseMapLoadCompletionInfo(int lsid, ReverseMapLoadCompletion* callback)
 {
+    std::lock_guard<std::mutex> guard(reverseMapLoadCompletionLock);
     ReverseMapLoadCompletionInfo info;
     info.event = BackendEvent_GC;
     info.reverseMapLoadCompletion = callback;
@@ -162,12 +166,14 @@ GcDebugInfo::UpdateReverseMapLoadCompletionInfo(int lsid, ReverseMapLoadCompleti
 void
 GcDebugInfo::ClearReverseMapLoadCompletionLog(int lsid)
 {
+    std::lock_guard<std::mutex> guard(reverseMapLoadCompletionLock);
     reverseMapLoadCompletionLog.erase(lsid);
 }
 
 void
 GcDebugInfo::UpdateGcFlushSubmission(int lsid, GcFlushSubmission* callback)
 {
+    std::lock_guard<std::mutex> guard(gcFlushSubmissionLock);
     GcFlushSubmissionInfo info;
     info.lsid = lsid;
     info.gcFlushSubmission = callback;
@@ -179,12 +185,14 @@ GcDebugInfo::UpdateGcFlushSubmission(int lsid, GcFlushSubmission* callback)
 void
 GcDebugInfo::ClearGcFlushSubmission(int lsid)
 {
+    std::lock_guard<std::mutex> guard(gcFlushSubmissionLock);
     gcFlushSubmissionLog.erase(lsid);
 }
 
 void
 GcDebugInfo::UpdateGcMapUpdateRequest(int lsid, GcMapUpdateRequest* callback)
 {
+    std::lock_guard<std::mutex> guard(gcMapUpdateRequestLock);
     GcMapUpdateRequestInfo info;
     info.gcMapUpdateRequest = callback;
     time(&info.beginTime);
@@ -195,6 +203,7 @@ GcDebugInfo::UpdateGcMapUpdateRequest(int lsid, GcMapUpdateRequest* callback)
 void 
 GcDebugInfo::ClearGcMapUpdateRequest(int lsid)
 {
+    std::lock_guard<std::mutex> guard(gcMapUpdateRequestLock);
     gcMapUpdateRequestLog.erase(lsid);
 }
 
@@ -222,14 +231,14 @@ GcDebugInfo::UpdateAllocatedSegmentInfo(int segmentId)
 void 
 GcDebugInfo::Snapshot(void)
 {
-    std::ofstream out("Test.dat", ios::binary);
     {
         GcModeInfo gcModeInfo;
         gcModeInfo = curGcModeInfo;
 
         cereal::JSONOutputArchive archive(out);
-        archive(CEREAL_NVP(gcModeInfo));
-        out.close();
+        archive(CEREAL_NVP(curGcModeInfo));
+        //archive(CEREAL_NVP(allocatedFreeSegmentHistory));
+        //archive(CEREAL_NVP(stripeCopySubmissionLog));
     }
 }
 } // namespace pos
