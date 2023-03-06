@@ -88,6 +88,7 @@
 #include "write_whole_reverse_map_wbt_command.h"
 #include "update_config_wbt_command.h"
 #include "set_write_bypass_wbt_command.h"
+#include "fast_sustain_wbt_command.h"
 
 namespace pos
 {
@@ -173,6 +174,8 @@ WbtCmdHandler::PrepareWbtCommands(void)
 
     // Write Bypass
     wbtCommandMap["set_write_bypass"] = std::make_unique<SetWriteBypassWbtCommand>();
+
+    wbtCommandMap["fast_sustain"] = std::make_unique<FastSustainWbtCommand>();
 }
 
 WbtCmdHandler::WbtCmdHandler(std::string const& commandName)

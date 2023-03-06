@@ -119,7 +119,9 @@ enum WbtCommandOpcode
     UPDATE_CONFIG,
 
     // Write Bypass
-    SET_WRITE_BYPASS
+    SET_WRITE_BYPASS,
+
+    FAST_SUSTAIN,
 };
 
 } // namespace pos
