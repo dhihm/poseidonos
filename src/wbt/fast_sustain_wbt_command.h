@@ -35,6 +35,8 @@
 #include "src/wbt/wbt_command.h"
 #include "src/wbt/fast_sustain/io_generator.h"
 
+struct pos_io;
+
 namespace pos
 {
 class FastSustainWbtCommand : public WbtCommand
@@ -43,11 +45,18 @@ public:
     FastSustainWbtCommand(void);
     virtual ~FastSustainWbtCommand(void);
 
-    int Execute(Args& argv, JsonElement& elem) override;
-    int InternalExecute(void);
+    virtual int Execute(Args& argv, JsonElement& elem);
 
 private:
-    IoGenerator ioGenerator;
+    static const int VALID_BLOCK_RATIO = 30;
+    static const int BLOCK_SIZE_512B = 512;
+    static const int BYTES_IN_128KB = 131072;
+    static const int ALLOC_COUNT_512B = BYTES_IN_128KB / BLOCK_SIZE_512B;
+
+    pos_io* GenerateWriteIoPacket(int arrayId, int volumeId, uint64_t rba, void* mem);
+    bool IssueIo(int arrayId, int volumeId, uint64_t lba);
+    void WaitAllIoDone(uint32_t waitIoCount);
+    uint32_t CalculateNumOfIoCountToStartInvalidate(uint32_t numOfIoCount);
 };
 
 } // namespace pos

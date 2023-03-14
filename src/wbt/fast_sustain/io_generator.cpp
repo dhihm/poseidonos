@@ -30,11 +30,49 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "io_generator.h"
+#include "src/wbt/fast_sustain/io_generator.h"
+#include "src/io/frontend_io/aio.h"
 #include "src/logger/logger.h"
+#include "src/include/smart_ptr_type.h"
+#include "src/volume/volume_manager.h"
 
 using namespace std;
 
 namespace pos
 {
+IoGenerator::IoGenerator(pos_io* posIo_, int arrayId_, int volumeId_)
+: posIo(posIo_),
+  arrayId(arrayId_),
+  volumeId(volumeId_)
+{
+}
+
+bool
+IoGenerator::Execute(void)
+{
+    AIO aio;
+    VolumeIoSmartPtr volIo = aio.CreateVolumeIo(*posIo);
+
+    IVolumeIoManager* volumeIoManager =
+        VolumeServiceSingleton::Instance()->GetVolumeManager(arrayId);
+    if (unlikely(EID(SUCCESS) !=
+        volumeIoManager->IncreasePendingIOCountIfNotZero(volumeId,
+            static_cast<VolumeIoType>(posIo->ioType))))
+    {
+        // TODO EID
+        POS_TRACE_WARN(-1,
+            "Increase pending io count was failed, array id: {}, volume id: {}",
+            arrayId, volumeId);
+
+        if (nullptr != posIo->iov->iov_base)
+        {
+            pos::Memory<512>::Free(posIo->iov->iov_base);
+        }
+        return false;
+    }
+
+    aio.SubmitAsyncIO(volIo);
+
+    return true;
+}
 } // namespace pos

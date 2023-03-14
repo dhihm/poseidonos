@@ -89,6 +89,7 @@ SUBDIRS = allocator \
         debug_lib \
         wbt \
         wbt/write_bypass \
+        wbt/fast_sustain \
         admin \
         resource_manager \
 	telemetry \

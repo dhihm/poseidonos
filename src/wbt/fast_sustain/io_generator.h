@@ -1,6 +1,6 @@
 /*
  *   BSD LICENSE
- *   Copyright (c) 2021 Samsung Electronics Corporation
+ *   Copyright (c) 2023 Samsung Electronics Corporation
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -34,18 +34,24 @@
 
 #include <string>
 #include <unordered_set>
+#include "src/event_scheduler/event.h"
+#include "src/include/smart_ptr_type.h"
 
-using namespace std;
+struct pos_io;
 
 namespace pos
 {
-class IoGenerator
+class IoGenerator : public Event
 {
 public:
-    IoGenerator(void) {}
-    ~IoGenerator(void) {}
-private:
+    IoGenerator(pos_io* posIo_, int arrayId_, int volumeId_);
 
+    virtual bool Execute(void);
+
+private:
+    pos_io* posIo;
+    int arrayId;
+    int volumeId;
 };
 
 } // namespace pos

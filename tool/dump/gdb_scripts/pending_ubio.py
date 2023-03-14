@@ -34,6 +34,7 @@ def show_pending_ubio():
     tmp_str = ""
     output_callback_ele = "0x0"
     for line in lines:
+        output_rba = 0
         if ("buffer" in line):
             ubio_memaddr = (line.split('=')[1].lstrip(' ').rstrip(' ,\n'))
             output_ubio = gdb.execute(

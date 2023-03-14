@@ -30,11 +30,18 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "src/wbt/fast_sustain/io_generator.h"
+
 #include "src/include/smart_ptr_type.h"
 #include "src/io/frontend_io/aio.h"
 #include "src/wbt/fast_sustain_wbt_command.h"
 #include "src/io/frontend_io/unvmf_io_handler.h"
 #include "src/volume/volume_manager.h"
+#include "src/event_scheduler/io_completer.h"
+#include "src/event_scheduler/spdk_event_scheduler.h"
+#include "src/allocator/i_context_manager.h"
+
+#include <atomic>
 
 namespace pos
 {
@@ -47,29 +54,86 @@ FastSustainWbtCommand::~FastSustainWbtCommand(void)
 {
 }
 // LCOV_EXCL_STOP
-int
-FastSustainWbtCommand::Execute(Args& argv, JsonElement& elem)
-{
-    int result = InternalExecute();
-    return result;
-}
+
+volatile static uint32_t doneCount = 0;
+volatile static uint64_t lba = 0;
 
 void
-frontend_io_complete(struct pos_io* posIo, int status)
+complete_io(struct pos_io* posIo, int status)
 {
+    if (nullptr != posIo->iov->iov_base)
+    {
+        pos::Memory<512>::Free(posIo->iov->iov_base);
+    }
+
+    doneCount++;
     delete posIo->iov;
     delete posIo;
 }
 
-int
-FastSustainWbtCommand::InternalExecute(void)
+pos_io*
+FastSustainWbtCommand::GenerateWriteIoPacket(int arrayId, int volumeId, uint64_t rba, void* mem)
 {
-    int arrayId = 0;
-    int volumeId = 0;
-    int rba = 0;
-    int lastRba = -1;
-    int numChunks = 128;
+    pos_io* posIo = new pos_io;
+    struct iovec* iov = new iovec;
 
+    char arrayNameDefault[32] = "POSArray";
+
+    posIo->ioType = IO_TYPE::WRITE;
+    posIo->arrayName = arrayNameDefault;
+    posIo->array_id = arrayId;
+    posIo->volume_id = volumeId;
+    posIo->offset = ChangeSectorToByte(rba);
+
+    posIo->length = BYTES_IN_128KB;
+    posIo->iov = iov;
+    iov->iov_base = (char*)mem;
+    posIo->iovcnt = 1;
+
+    posIo->complete_cb = complete_io;
+
+    return posIo;
+}
+
+void
+FastSustainWbtCommand::WaitAllIoDone(uint32_t waitIoCount)
+{
+    while (doneCount != waitIoCount)
+    {
+        usleep(1);
+    }
+
+    doneCount = 0;
+}
+
+bool
+FastSustainWbtCommand::IssueIo(int arrayId, int volumeId, uint64_t lba)
+{
+    void* bufferPool = pos::Memory<BLOCK_SIZE_512B>::Alloc(ALLOC_COUNT_512B);
+    pos_io* posIo = GenerateWriteIoPacket(arrayId, volumeId, lba, bufferPool);
+    EventSmartPtr submitIoEvent(new IoGenerator(posIo, arrayId, volumeId));
+    return SpdkEventScheduler::SendSpdkEvent(0, submitIoEvent);
+}
+
+uint32_t
+FastSustainWbtCommand::CalculateNumOfIoCountToStartInvalidate(uint32_t numOfIoCount)
+{
+    uint32_t numOfIoCountToStartInvalidate = 0;
+    if (0 != (numOfIoCount % 2))
+    {
+        numOfIoCountToStartInvalidate = (numOfIoCount + 1) / 2;
+    }
+    else
+    {
+        numOfIoCountToStartInvalidate = numOfIoCount / 2;
+    }
+    return numOfIoCountToStartInvalidate;
+}
+
+int
+FastSustainWbtCommand::Execute(Args& argv, JsonElement& elem)
+{
+    POS_TRACE_INFO(-1, "Start fast sustain WBT command");
     vector<const ComponentsInfo*> arrayInfoList = ArrayMgr()->GetInfo();
     if (0 == arrayInfoList.size())
     {
@@ -78,68 +142,97 @@ FastSustainWbtCommand::InternalExecute(void)
         return errorId;
     }
 
-    void* mem = pos::Memory<512>::Alloc(128 * 1 * 1);
-    char arrayNameDefault[32] = "POSArray";
-
     for (const ComponentsInfo* ci : arrayInfoList)
     {
         IArrayInfo* arrayInfo = ci->arrayInfo;
         if (ArrayStateEnum::NORMAL != arrayInfo->GetState())
         {
-            // POS_TRACE_WARN(EID(),
-            //     "Fast sustain I/O skipped. Array {}, state {} ", arrayInfo->GetName(), arrayInfo->GetState());
             continue;
         }
 
-        arrayId = arrayInfo->GetIndex();
-        const PartitionLogicalSize* partitionSize = arrayInfo->GetSizeInfo(PartitionType::USER_DATA);
-        numChunks = partitionSize->blksPerChunk;
-        lastRba = 130023423;
-        // Get Volume Id
+        int arrayId = arrayInfo->GetIndex();
+        IVolumeInfoManager* volumeInfoManager = VolumeServiceSingleton::Instance()->GetVolumeManager(arrayId);
+        VolumeList* volumeList = volumeInfoManager->GetVolumeList();
 
-        while (rba <= lastRba)
+        int volumeId = -1;
+        while (true)
         {
-            UNVMfCompleteHandler();
-
-            // make volume io
-            AIO aio;
-            pos_io* posIo = new pos_io;
-            struct iovec* iov = new iovec;
-
-            posIo->ioType = IO_TYPE::WRITE;
-            posIo->array_id = arrayId;
-            posIo->volume_id = volumeId;
-            posIo->offset = ChangeSectorToByte(rba);
-            posIo->length = 4096;
-            posIo->iov = iov;
-            posIo->arrayName = arrayNameDefault;
-            iov->iov_base = (char*)mem + ((rba / posIo->length) * 4096);
-            posIo->iovcnt = 1;
-            posIo->complete_cb = frontend_io_complete;
-
-            POS_TRACE_INFO(-1, "posIo: array_id {}, volume_id {}, offset {}",
-                posIo->array_id, posIo->volume_id, posIo->offset);
-
-            VolumeIoSmartPtr volIo = aio.CreateVolumeIo(*posIo);
-
-            IVolumeIoManager* volumeManager = VolumeServiceSingleton::Instance()->GetVolumeManager(posIo->array_id);
-            if (unlikely(EID(SUCCESS) != volumeManager->IncreasePendingIOCountIfNotZero(posIo->volume_id, static_cast<VolumeIoType>(posIo->ioType))))
+            VolumeBase* vol = volumeList->Next(volumeId);
+            if (nullptr == vol)
             {
-                // TODO
-                // IoCompleter ioCompleter(volumeIo);
-                // ioCompleter.CompleteUbioWithoutRecovery(IOErrorType::VOLUME_UMOUNTED, true);
-                return POS_IO_STATUS_SUCCESS;
+                break;
             }
 
-            aio.SubmitAsyncIO(volIo);
+            uint32_t capacity = vol->GetTotalSize() - 1;
+            lba = 0;
+            doneCount = 0;
+            uint64_t endLba = (lba + (capacity / BLOCK_SIZE_512B)) - 256;
+            uint64_t validBlckEndLba = (endLba * VALID_BLOCK_RATIO) / 100;
 
-            // UNVMfSubmitHandler(&posIo);
+            POS_TRACE_INFO(-1, "arrayId {}, volume{}, capacity {}, lba {}, endLba {}",
+                arrayId, volumeId, capacity, lba, endLba);
 
-            // Update rba (TODO: 128KB write)
-            rba += 8; // length / BLOCK_SIZE (512)
+            while (true)
+            {
+                volatile uint32_t issueCount = 0;
+                while (lba <= validBlckEndLba)
+                {
+                    if (lba + ((BYTES_IN_128KB / BLOCK_SIZE_512B)) >= validBlckEndLba)
+                    {
+                        break;
+                    }
+
+                    bool success = IssueIo(arrayId, volumeId, lba);
+                    if (false == success)
+                    {
+                        POS_TRACE_ERROR(-1, "send spdk event error, origirnCore {} \n", 0);
+                        break;
+                    }
+                    issueCount++;
+                    lba += (BYTES_IN_128KB / BLOCK_SIZE_512B);
+                }
+
+                while (issueCount != doneCount)
+                {
+                    usleep(1);
+                }
+
+                for (int i = 0; i < 2; i++)
+                {
+                    lba = validBlckEndLba;
+                    uint32_t secondFillEndLba = (lba + endLba) / 2;
+                    while (lba <= secondFillEndLba)
+                    {
+                        if (lba + ((BYTES_IN_128KB / BLOCK_SIZE_512B)) >= secondFillEndLba)
+                        {
+                            break;
+                        }
+
+                        bool success = IssueIo(arrayId, volumeId, lba);
+                        if (false == success)
+                        {
+                            POS_TRACE_ERROR(-1, "send spdk event error, origirnCore {} \n", 0);
+                            break;
+                        }
+
+                        issueCount++;
+                        lba += (BYTES_IN_128KB / BLOCK_SIZE_512B);
+                    }
+
+                    while (issueCount != doneCount)
+                    {
+                        usleep(1);
+                    }
+                }
+
+                IContextManager* contextManager = AllocatorServiceSingleton::Instance()->GetIContextManager("POSArray");
+                uint32_t numOfFreeSegment = contextManager->GetSegmentCtx()->GetNumOfFreeSegment();
+
+                POS_TRACE_INFO(-1, "volume {} write, numOfFreeSegment {}", volumeId, numOfFreeSegment);
+
+                break;
+            }
         }
-
-        UNVMfCompleteHandler();
     }
 
     return 0;
